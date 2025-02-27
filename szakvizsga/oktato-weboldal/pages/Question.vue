@@ -1,12 +1,9 @@
 <template>
-  <div class="question-container">
+  <div class="question-container" :key="currentIndex">
     <h2>JavaScript Szintfelmérő Teszt</h2>
-
-    <!-- Wrapper to conditionally render timer and question/content -->
     <div v-if="!isTestFinished">
       <p class="timer">{{ timer }}</p>
       <p class="question">{{ question.text }}</p>
-      
       <button 
         v-for="(option, index) in question.options" 
         :key="index" 
@@ -15,14 +12,11 @@
       >
         {{ option }}
       </button>
-
       <p class="progress">{{ currentIndex + 1 }}/{{ total }}</p>
     </div>
-
-    <!-- Result section after test is finished -->
     <div v-else class="result-section">
-      <p class="result">You got {{ correctAnswers }} out of {{ total }} correct.</p>
-      <button class="continue-button" @click="nextTest">Tovabb</button>
+      <p class="result">Helyes válaszok száma: {{ correctAnswers }} / {{ total }}.</p>
+      <button class="continue-button" @click="nextTest">Tovább</button>
     </div>
   </div>
 </template>
@@ -39,17 +33,24 @@ export default {
       selectedAnswer: null,
     };
   },
+  watch: {
+    currentIndex() {
+      this.startTimer();
+    }
+  },
   mounted() {
     this.startTimer();
   },
   methods: {
     startTimer() {
       this.timer = 15;
+      if (this.countdown) clearInterval(this.countdown);
       this.countdown = setInterval(() => {
         if (this.timer > 0 && !this.isTestFinished) {
           this.timer--;
         } else if (this.timer === 0) {
           this.checkAnswer();
+          this.moveToNextQuestion();
         }
       }, 1000);
     },
@@ -57,20 +58,28 @@ export default {
       this.selectedAnswer = option;
       clearInterval(this.countdown);
       this.checkAnswer();
+      this.moveToNextQuestion();
     },
     checkAnswer() {
       if (this.selectedAnswer === this.question.correctAnswer) {
         this.correctAnswers++;
       }
+    },
+    moveToNextQuestion() {
       if (this.currentIndex + 1 < this.total) {
-        this.$emit('next');  // Notify parent to move to next question
+        setTimeout(() => {
+          this.$emit('next');
+        }, 500);
       } else {
-        this.isTestFinished = true;  // Show result when test is complete
-        this.$emit('finished', this.correctAnswers);  // Send final score to parent
+        this.isTestFinished = true;
+        this.$emit('finished', this.correctAnswers);
       }
     },
     nextTest() {
-      this.$emit('nextTest');  // Trigger event to go to the next test (or page)
+      this.isTestFinished = false;
+      this.selectedAnswer = null;
+      this.startTimer();
+      this.$emit('nextTest');
     },
   },
   beforeUnmount() {
@@ -80,15 +89,22 @@ export default {
 </script>
 
 <style scoped>
+html, body {
+  height: 100%;
+  margin: 0;
+}
+
 .question-container {
   display: flex;
   flex-direction: column;
+  justify-content: center;
   align-items: center;
   text-align: center;
   background: #f8f8f8;
+  height: 100vh; 
+  width: 100%; 
   padding: 20px;
-  border-radius: 10px;
-  box-shadow: 0px 4px 6px rgba(0, 0, 0, 0.1);
+  box-sizing: border-box; 
 }
 
 h2 {
@@ -136,13 +152,13 @@ h2 {
 
 .result {
   font-size: 1.2rem;
-  color: #4CAF50;
+  color: #BE3144;
 }
 
 .continue-button {
   margin-top: 10px;
   padding: 10px 20px;
-  background-color: #4CAF50;
+  background-color: #BE3144;
   color: white;
   border: none;
   border-radius: 5px;
@@ -150,6 +166,10 @@ h2 {
 }
 
 .continue-button:hover {
-  background-color: #45a049;
+  background-color: #9B2540;
+}
+
+.flex-1.justify-between {
+  background-color: #333333;
 }
 </style>

@@ -2,15 +2,15 @@
     <div class="login-container">
       <div class="login-card">
         <h2 class="title">Bejelentkezés</h2>
-        <form>
+        <form @submit.prevent="handleSubmit">
           <div class="input-group">
             <label for="email">Email</label>
-            <input type="email" id="email" placeholder="Email">
+            <input type="email" id="email" v-model="form.email" placeholder="Email">
           </div>
   
           <div class="input-group">
             <label for="password">Jelszó</label>
-            <input type="password" id="password" placeholder="Jelszó">
+            <input type="password" id="password" v-model="form.password" placeholder="Jelszó">
           </div>
   
           <div class="checkbox-container">
@@ -29,10 +29,35 @@
   </template>
   
   <script>
-  export default {
-    name: 'LoginPage'
-  }
-  </script>
+ import axios from 'axios';
+ import { setUserToken } from '../user-store.ts';
+
+export default {
+  name: 'LoginPage',
+  data() {
+    return {
+      form: {
+        email: '',
+        password: '',
+      },
+    };
+  },
+  methods: {
+    async handleSubmit() {
+      try {
+        const remember = document.getElementById('remember').checked;
+        const response = await axios.post('/api/login', this.form);
+        if (response.status === 200) {
+          setUserToken(response.data.token, remember);
+          this.$router.push('/landing');
+        }
+      } catch (error) {
+        console.error('Error during registration:', error);
+      }
+    },
+  },
+};
+</script>
   
   <style scoped>
   .login-container {

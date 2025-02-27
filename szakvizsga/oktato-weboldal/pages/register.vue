@@ -2,26 +2,26 @@
     <div class="signup-container">
       <div class="signup-card">
         <h2 class="title">Regisztráció</h2>
-        <form>
+        <form @submit.prevent="handleSubmit">
           <div class="input-group name-group">
             <div class="name-input">
               <label for="csaladnev">Családnév</label>
-              <input type="text" id="csaladnev" placeholder="Családnév">
+              <input type="text" id="csaladnev" v-model="form.lastName" placeholder="Családnév">
             </div>
             <div class="name-input">
               <label for="keresztnev">Keresztnév</label>
-              <input type="text" id="keresztnev" placeholder="Keresztnév">
+              <input type="text" id="keresztnev" v-model="form.firstName" placeholder="Keresztnév">
             </div>
           </div>
   
           <div class="input-group">
             <label for="email">Email</label>
-            <input type="email" id="email" placeholder="Email">
+            <input type="email" id="email" v-model="form.email" placeholder="Email">
           </div>
   
           <div class="input-group">
             <label for="szerep">Szerep</label>
-            <select id="szerep">
+            <select id="szerep" v-model="form.role">
               <option value="tanar">Tanár</option>
               <option value="diak">Diák</option>
             </select>
@@ -29,7 +29,7 @@
   
           <div class="input-group">
             <label for="password">Jelszó</label>
-            <input type="password" id="password" placeholder="Jelszó">
+            <input type="password" id="password" v-model="form.password" placeholder="Jelszó">
           </div>
   
           <button type="submit" class="signup-button">Regisztrálás</button>
@@ -39,11 +39,36 @@
     </div>
   </template>
   
-  <script>
-  export default {
-    name: 'SignupPage'
-  }
-  </script>
+<script>
+ import axios from 'axios';
+
+export default {
+  name: 'SignupPage',
+  data() {
+    return {
+      form: {
+        lastName: '',
+        firstName: '',
+        email: '',
+        role: 'diak',
+        password: '',
+      },
+    };
+  },
+  methods: {
+    async handleSubmit() {
+      try {
+        const response = await axios.post('/api/signup', this.form);
+        if (response.status === 200) {
+          this.$router.push('/login');
+        }
+      } catch (error) {
+        console.error('Error during registration:', error);
+      }
+    },
+  },
+};
+</script>
   
   <style scoped>
   .signup-container {

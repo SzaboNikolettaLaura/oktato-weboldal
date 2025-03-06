@@ -60,7 +60,7 @@ export default {
       try {
         const response = await axios.post('/api/signup', this.form);
         if (response.status === 200) {
-          this.$router.push('/login');
+          this.$router.push('/profile');
         }
       } catch (error) {
         console.error('Error during registration:', error);
@@ -88,7 +88,7 @@ export default {
   text-align: center;
   max-width: 450px;
   width: 100%;
-  height: 550px; /* Same height as login card */
+  height: 550px;
   display: flex;
   flex-direction: column;
   justify-content: center;

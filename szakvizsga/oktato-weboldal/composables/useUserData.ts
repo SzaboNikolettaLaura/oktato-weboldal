@@ -1,0 +1,70 @@
+import { jwtDecode } from "jwt-decode";
+
+export type IUser = {
+    token: string;
+    id: Number;
+    role: 'diak' | 'tanar' | 'guest';
+    loaded: boolean;
+}
+
+const useUserData = () => {
+  
+    const init = (): IUser => {
+        let loaded = false;
+        if(process.browser) {
+            const token = localStorage.getItem('user-token');
+            if(token) {
+                const data = jwtDecode<Record<string, string>>(token);
+                return {
+                    token: token,
+                    id: Number(data['id']),
+                    role: data['role'] as 'diak' | 'tanar',
+                    loaded: true
+                }
+            }
+            loaded = true;
+        }
+        return {
+            token: '',
+            id: 0,
+            role: 'guest',
+            loaded
+        }
+    }
+    const userData = useState<IUser>('user', init);
+
+    const clearUserToken = () => {
+        localStorage.removeItem('user-token');
+    }
+
+    const logout = () => {
+        clearUserToken();
+        userData.value = {
+            id: 0,
+            token: '',
+            role: 'guest',
+            loaded: true
+        };
+    }
+    
+    const setUserData = (token: string, remember: boolean) => {
+        if(remember) {
+            localStorage.setItem('user-token', token);
+        } else {
+            clearUserToken();
+        }
+        userData.value.token = token;
+        const data = jwtDecode<Record<string, string>>(token);
+        userData.value.id = Number(data['id']);
+        if(data['role'] === 'diak' || data['role'] === 'tanar') {
+            userData.value.role = data['role'];
+        }
+        userData.value.loaded = true;
+    }
+    return {
+        userData,
+        setUserData,
+        logout
+    }
+}
+export default useUserData

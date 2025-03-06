@@ -22,50 +22,24 @@
   </nav>
 </template>
 
-<script>
-export default {
-  data() {
-    return {
-      isLoggedIn: false, // Flag, hogy a felhasználó be van-e jelentkezve
-    }
-  },
-  created() {
-    this.checkLoginStatus(); // Ellenőrizzük a bejelentkezett státuszt az oldal betöltésekor
-  },
-  methods: {
-    // Ellenőrizzük, hogy van-e érvényes token a localStorage-ban
-    checkLoginStatus() {
-      const token = localStorage.getItem('userToken');
-      if (token) {
-        const user = this.decodeToken(token);
-        if (user) {
-          this.isLoggedIn = true; // Ha van érvényes token, a felhasználó be van jelentkezve
-        }
-      }
-    },
+<script setup>
+import { ref, computed, onMounted } from 'vue';
+const { userData, logout: logoutUser } = useUserData();
 
-    // Token dekódolása (JWT dekódolás)
-    decodeToken(token) {
-      try {
-        const base64Url = token.split('.')[1];
-        const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
-        const jsonPayload = decodeURIComponent(atob(base64).split('').map(function(c) {
-          return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
-        }).join(''));
+const isLoggedIn = ref(false);
 
-        return JSON.parse(jsonPayload);
-      } catch (e) {
-        return null; // Ha hibás a token, visszaadjuk a null-t
-      }
-    },
+const checkLoginStatus = () => {
+  isLoggedIn.value = userData.value.role !== 'guest';
+};
 
-    // Kijelentkezés
-    logout() {
-      localStorage.removeItem('userToken'); // Töröljük a token-t a localStorage-ból
-      this.isLoggedIn = false; // Állítsuk vissza a bejelentkezett státuszt
-    }
-  }
-}
+const logout = () => {
+  logoutUser();
+  isLoggedIn.value = false;
+};
+
+onMounted(() => {
+  checkLoginStatus();
+});
 </script>
 
 <style scoped>

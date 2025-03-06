@@ -28,36 +28,34 @@
   </div>
 </template>
 
-<script>
- import axios from 'axios';
- import { setUserToken } from '../user-store.ts';
+<script setup>
+  import { ref } from 'vue';
+  import axios from 'axios';
+  import { useRouter } from 'vue-router';
+  
+  const {setUserData} = useUserData();
 
-export default {
-  name: 'LoginPage',
-  data() {
-    return {
-      form: {
-        email: '',
-        password: '',
-      },
-    };
-  },
-  methods: {
-    async handleSubmit() {
-      try {
-        const remember = document.getElementById('remember').checked;
-        const response = await axios.post('/api/login', this.form);
-        if (response.status === 200) {
-          setUserToken(response.data.token, remember);
-          this.$router.push('/landing');
-        }
-      } catch (error) {
-        console.error('Error during registration:', error);
+  const form = ref({
+    email: '',
+    password: '',
+  });
+
+  const router = useRouter();
+
+  const handleSubmit = async () => {
+    try {
+      const remember = document.getElementById('remember').checked;
+      const response = await axios.post('/api/login', form.value);
+      if (response.status === 200) {
+        setUserData(response.data.token, remember);
+        router.push('/landing');
       }
-    },
-  },
-};
+    } catch (error) {
+      console.error('Error during registration:', error);
+    }
+  };
 </script>
+
 
 <style scoped>
 .login-container {

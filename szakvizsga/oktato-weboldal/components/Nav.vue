@@ -71,7 +71,6 @@ onMounted(() => {
 .nav-links a {
   text-decoration: none;
   color: #ECF0F1;
-  font-family: 'Arial', sans-serif;
   font-weight: bold;
 }
 
@@ -82,7 +81,6 @@ onMounted(() => {
 .login-text {
   color: #ECF0F1;
   cursor: pointer;
-  font-family: 'Arial', sans-serif;
   font-size: 18px;
   font-weight: bold;
   transition: color 0.3s ease;

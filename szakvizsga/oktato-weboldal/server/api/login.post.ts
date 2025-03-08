@@ -11,7 +11,7 @@ export default defineEventHandler(async (event) => {
   try {
     // Query the database to check if the email and password match a user
     const [rows] = await mysql.query(
-      'SELECT id, email, password, role FROM users WHERE email = ?',
+      'SELECT id, email, password, role, first_name, last_name FROM users WHERE email = ?',
       [email, password]
     )
 

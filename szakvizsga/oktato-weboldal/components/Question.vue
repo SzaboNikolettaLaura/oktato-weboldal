@@ -16,7 +16,7 @@
     </div>
     <div v-else class="result-section">
       <p class="result">Helyes válaszok száma: {{ correctAnswers }} / {{ total }}.</p>
-      <button class="continue-button" @click="nextTest">Tovább</button>
+      <button class="continue-button" @click="finished">Tovább</button>
     </div>
   </div>
 </template>
@@ -72,14 +72,10 @@ export default {
         }, 500);
       } else {
         this.isTestFinished = true;
-        this.$emit('finished', this.correctAnswers);
       }
     },
-    nextTest() {
-      this.isTestFinished = false;
-      this.selectedAnswer = null;
-      this.startTimer();
-      this.$emit('nextTest');
+    finished() {
+      this.$emit('finished', this.correctAnswers);
     },
   },
   beforeUnmount() {
@@ -87,13 +83,7 @@ export default {
   },
 };
 </script>
-
 <style scoped>
-html, body {
-  height: 100%;
-  margin: 0;
-}
-
 .question-container {
   display: flex;
   flex-direction: column;

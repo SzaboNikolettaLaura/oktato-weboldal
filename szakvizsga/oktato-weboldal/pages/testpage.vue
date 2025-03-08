@@ -13,38 +13,41 @@
       :current-index="currentQuestionIndex" 
       :total="questions.length" 
       @next="nextQuestion"
+      @finished="finished"
     />
   </div>
 </template>
 
-<script>
-import Question from './Question.vue';
+<script setup>
+definePageMeta({
+  middleware: 'test-complete'
+});
+import { ref } from 'vue';
+import axios from 'axios';
+import Question from '../components/Question.vue';
 import questions from '../data/questions.js';
 
-export default {
-  components: { Question },
-  data() {
-    return {
-      quizStarted: false,
-      currentQuestionIndex: 0,
-      questions,
-    };
-  },
-  methods: {
-    startQuiz() {
-      this.quizStarted = true;
-    },
-    nextQuestion() {
-      if (this.currentQuestionIndex < this.questions.length - 1) {
-        this.currentQuestionIndex++;
-      } else {
-        alert("Teszt vége!");
-        this.quizStarted = false;
-        this.currentQuestionIndex = 0;
-      }
-    },
-  },
+const {userData} = useUserData();
+
+const quizStarted = ref(false);
+const currentQuestionIndex = ref(0);
+
+const startQuiz = () => {
+  quizStarted.value = true;
 };
+
+const nextQuestion = () => {
+  if (currentQuestionIndex.value < questions.length - 1) {
+    currentQuestionIndex.value++;
+  } else {
+    quizStarted.value = false;
+  }
+};
+const finished = (correctAnswers) => {
+  axios.post(`/api/quiz`, {correct: correctAnswers, token: userData.value.token}).then(() => {
+    navigateTo(`/users/${userData.value.id}`);
+  })
+}
 </script>
 
 <style>

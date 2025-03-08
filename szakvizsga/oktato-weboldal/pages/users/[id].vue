@@ -1,29 +1,47 @@
 <template>
-    <div>
-      <Nav />
-      <div class="profile-container">
-        <div class="profile-card">
+  <div class="page-container">
+    <Nav />
+    <div class="profile-container">
+      <div class="sidebar">
+        <div class="sidebar-content">
           <img :src="user.image" alt="Profile Picture" class="profile-image" />
           <button class="edit-btn">Szerkesztés</button>
           <button class="delete-btn">Törlés</button>
         </div>
-        <div class="profile-info">
-          <h2>Személyes információk</h2>
-          <label>Családnév</label>
-          <input v-model="user.lastName" type="text" disabled />
-          <label>Keresztnév</label>
-          <input v-model="user.firstName" type="text" disabled />
-          <label>Email</label>
-          <input v-model="user.email" type="email" disabled />
-          <div v-if="isStudent" class="profile-selects">
+      </div>
+
+      <div class="profile-info">
+        <h2>Személyes információk</h2>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Családnév</label>
+            <input v-model="user.last_name" type="text" disabled />
+          </div>
+          <div class="form-group">
+            <label>Keresztnév</label>
+            <input v-model="user.first_name" type="text" disabled />
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Email</label>
+            <input v-model="user.email" type="email" disabled />
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
             <label>Szak</label>
-            <select v-model="user.major" disabled>
+            <select v-model="user.specialization" disabled>
               <option>Informatika</option>
             </select>
+          </div>
+          <div class="form-group">
             <label>Évfolyam</label>
             <select v-model="user.year" disabled>
               <option>II</option>
             </select>
+          </div>
+          <div class="form-group">
             <label>Csoport</label>
             <select v-model="user.group" disabled>
               <option>A</option>
@@ -32,98 +50,117 @@
         </div>
       </div>
     </div>
-  </template>
-  <script setup>
-  import { computed } from 'vue';
-  import { useRouter } from 'vue-router';
-  import Nav from '@/components/Nav.vue';
+  </div>
+</template>
 
-  const { userData } = useUserData();
-  const router = useRouter();
+<script setup>
+import Nav from '@/components/Nav.vue';
 
-  const isStudent = computed(() => userData.value.role === 'diak');
-  const isTeacher = computed(() => userData.value.role === 'tanar');
-  const user = {
-          image: 'https://via.placeholder.com/150',
-          lastName: 'Csaladnev',
-          firstName: 'Keresztnev',
-          email: 'csaladnevkeresztnev@gmail.com',
-          major: 'Informatika',
-          year: 'II',
-          group: 'A'
-        };
-  if (userData.value.loaded && !['diak', 'tanar'].includes(userData.value.role)) {
-    router.push('/');
-  }
+const {userData} = useUserData();
+const {profileData} = await useProfileData();
+const user = userData.value;
 </script>
 
-  <style scoped>
+<style scoped>
+.page-container {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+.profile-container {
+  flex-grow: 1;
+  display: flex;
+  width: 100vw;
+}
+
+.sidebar {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background: white;
+  padding: 60px;
+  width: 420px;
+  box-shadow: 2px 0 5px rgba(0, 0, 0, 0.1);
+  position: relative;
+}
+
+.sidebar-content {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+}
+
+.profile-image {
+  width: 200px;
+  height: 200px;
+  border-radius: 50%;
+  margin-bottom: 25px;
+}
+
+.edit-btn, .delete-btn {
+  width: 100%;
+  padding: 18px;
+  margin-top: 15px;
+  font-size: 18px;
+  border: none;
+  cursor: pointer;
+  border-radius: 10px;
+}
+
+.edit-btn {
+  background: #001f3f;
+  color: white;
+}
+
+.delete-btn {
+  background: #d9534f;
+  color: white;
+}
+
+.profile-info {
+  flex-grow: 1;
+  background: #d9d9d9;
+  padding: 80px;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+}
+
+h2 {
+  color: #333;
+  margin-bottom: 30px;
+  font-size: 24px;
+}
+
+.form-group {
+  margin-bottom: 20px;
+  flex-grow: 1;
+}
+
+input, select {
+  width:100%;
+  padding: 12px;
+  border: 1px solid #ccc;
+  border-radius: 8px;
+  background: #f8f8f8;
+  font-size: 16px;
+  box-sizing: border-box;
+}
+
+.form-row {
+  display: flex;
+  gap: 20px;
+}
+
+@media (max-width: 768px) {
   .profile-container {
-    display: flex;
     flex-direction: column;
-    align-items: center;
-    padding: 20px;
-    background: #f3f3f3;
   }
-  .profile-card {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    background: white;
-    padding: 20px;
-    border-radius: 10px;
-    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+
+  .sidebar {
     width: 100%;
-    max-width: 400px;
+    box-shadow: none;
+    border-bottom: 2px solid #ccc;
   }
-  .profile-image {
-    width: 150px;
-    height: 150px;
-    border-radius: 50%;
-    margin-bottom: 10px;
-  }
-  .edit-btn, .delete-btn {
-    width: 100%;
-    margin-top: 10px;
-    padding: 10px;
-    border: none;
-    cursor: pointer;
-    font-size: 16px;
-  }
-  .edit-btn {
-    background: navy;
-    color: white;
-  }
-  .delete-btn {
-    background: red;
-    color: white;
-  }
-  .profile-info {
-    width: 100%;
-    max-width: 400px;
-    background: white;
-    padding: 20px;
-    border-radius: 10px;
-    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
-    margin-top: 20px;
-  }
-  .profile-selects {
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-  }
-  @media (min-width: 768px) {
-    .profile-container {
-      flex-direction: row;
-      justify-content: center;
-      align-items: flex-start;
-    }
-    .profile-card {
-      margin-right: 20px;
-    }
-    .profile-info {
-      margin-top: 0;
-    }
-  }
-  </style>
-  
+}
+</style>

@@ -5,6 +5,9 @@ export type IUser = {
     id: Number;
     role: 'diak' | 'tanar' | 'guest';
     loaded: boolean;
+    first_name: string;
+    last_name: string;
+    email: string;
 }
 
 const useUserData = () => {
@@ -19,7 +22,10 @@ const useUserData = () => {
                     token: token,
                     id: Number(data['id']),
                     role: data['role'] as 'diak' | 'tanar',
-                    loaded: true
+                    loaded: true,
+                    first_name: data['first_name'],
+                    last_name: data['last_name'],
+                    email: data['email']
                 }
             }
             loaded = true;
@@ -28,7 +34,10 @@ const useUserData = () => {
             token: '',
             id: 0,
             role: 'guest',
-            loaded
+            loaded,
+            first_name: '',
+            last_name: '',
+            email: ''
         }
     }
     const userData = useState<IUser>('user', init);
@@ -43,7 +52,10 @@ const useUserData = () => {
             id: 0,
             token: '',
             role: 'guest',
-            loaded: true
+            loaded: true,
+            first_name: '',
+            last_name: '',
+            email: ''
         };
     }
     
@@ -59,6 +71,9 @@ const useUserData = () => {
         if(data['role'] === 'diak' || data['role'] === 'tanar') {
             userData.value.role = data['role'];
         }
+        userData.value.first_name = data['first_name'];
+        userData.value.last_name = data['last_name'];
+        userData.value.email = data['email'];
         userData.value.loaded = true;
     }
     return {

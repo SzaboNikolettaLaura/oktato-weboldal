@@ -60,7 +60,7 @@ export default {
       try {
         const response = await axios.post('/api/signup', this.form);
         if (response.status === 200) {
-          this.$router.push('/profile');
+          this.$router.push('/login');
         }
       } catch (error) {
         console.error('Error during registration:', error);
@@ -129,6 +129,7 @@ select {
   padding: 8px;
   border: 1px solid #ccc;
   border-radius: 5px;
+  box-sizing: border-box;
 }
 
 select {

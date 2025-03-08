@@ -6,9 +6,14 @@ export default defineEventHandler(async (event) => {
     const body = await readBody(event);
     try {
       const hashedPassword = await bcrypt.hash(body.password, 10);
-      await mysql.query('INSERT INTO users(email, password, role, first_name, last_name) VALUES (?, ?, ?, ?, ?)',
-            [body.email, hashedPassword, body.role, body.firstName, body.lastName]
-      )
+      const result = await mysql.query(
+        'INSERT INTO users(email, password, role, first_name, last_name) VALUES (?, ?, ?, ?, ?)',
+        [body.email, hashedPassword, body.role, body.firstName, body.lastName]
+      );
+      console.log(result);
+      await mysql.query(
+        'INSERT INTO students(id) values (?)', [result[0].insertId]
+      );
       return {
         message: 'Success'
       }

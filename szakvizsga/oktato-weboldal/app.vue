@@ -21,7 +21,7 @@ body, html {
   width: 100%;
 }
 
-* {
+body *:not(.monaco-editor *) {
   font-family: 'Poppins', sans-serif;
 }
 #__nuxt {

@@ -11,4 +11,7 @@ export default defineNuxtConfig({
       tailwindcss(),
     ],
   },
+  modules: [
+    'nuxt-monaco-editor'
+  ]
 })

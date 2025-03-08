@@ -1,5 +1,5 @@
 <template>
-    <div>
+    <div class="h-full">
         <Nav />
         <div class="container">
         <div class="header">

@@ -2,7 +2,7 @@ import { jwtDecode } from "jwt-decode";
 
 export type IUser = {
     token: string;
-    id: Number;
+    id: number;
     role: 'diak' | 'tanar' | 'guest';
     loaded: boolean;
     first_name: string;

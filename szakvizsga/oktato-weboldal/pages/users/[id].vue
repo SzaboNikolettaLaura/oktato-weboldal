@@ -5,8 +5,9 @@
       <div class="sidebar">
         <div class="sidebar-content">
           <img :src="user.image" alt="Profile Picture" class="profile-image" />
-          <button class="edit-btn">Szerkesztés</button>
-          <button class="delete-btn">Törlés</button>
+          <button v-if="userData.id === user.id && !editing" class="edit-btn" @click="toggleEditing">Szerkesztés</button>
+          <button v-if="userData.id === user.id && editing" class="save-btn" @click="save">Mentés</button>
+          <button v-if="userData.id === user.id" class="delete-btn">Törlés</button>
         </div>
       </div>
 
@@ -15,35 +16,35 @@
         <div class="form-row">
           <div class="form-group">
             <label>Családnév</label>
-            <input v-model="user.last_name" type="text" disabled />
+            <input v-model="user.last_name" type="text" :disabled="!editing" />
           </div>
           <div class="form-group">
             <label>Keresztnév</label>
-            <input v-model="user.first_name" type="text" disabled />
+            <input v-model="user.first_name" type="text" :disabled="!editing" />
           </div>
         </div>
         <div class="form-row">
           <div class="form-group">
             <label>Email</label>
-            <input v-model="user.email" type="email" disabled />
+            <input v-model="user.email" type="email" :disabled="!editing" />
           </div>
         </div>
         <div class="form-row">
           <div class="form-group">
             <label>Szak</label>
-            <select v-model="user.specialization" disabled>
+            <select v-model="profile.specialization" :disabled="!editing">
               <option>Informatika</option>
             </select>
           </div>
           <div class="form-group">
             <label>Évfolyam</label>
-            <select v-model="user.year" disabled>
-              <option>II</option>
+            <select v-model="profile.year" :disabled="!editing">
+              <option value="2">II</option>
             </select>
           </div>
           <div class="form-group">
             <label>Csoport</label>
-            <select v-model="user.group" disabled>
+            <select v-model="profile.group" :disabled="!editing">
               <option>A</option>
             </select>
           </div>
@@ -54,11 +55,33 @@
 </template>
 
 <script setup>
+import {ref} from 'vue';
+import axios from 'axios';
 import Nav from '@/components/Nav.vue';
-
+const route = useRoute();
+const {id} = route.params;
 const {userData} = useUserData();
-const {profileData} = await useProfileData();
-const user = userData.value;
+const {profileData} = await useProfileData(id);
+const profile = profileData.value;
+const user = profile.user;
+if(!user) {
+  navigateTo('/landing');
+}
+
+const editing = ref(false);
+const toggleEditing = () => {
+  editing.value = !editing.value;
+}
+const save = () => {
+  console.log(profile);
+  axios.patch('/api/profile', profile, {
+  params: { token: userData.value.token }
+}).then(() => {
+  toggleEditing();
+}).catch(error => {
+  console.error("Update failed:", error);
+});
+}
 </script>
 
 <style scoped>
@@ -97,7 +120,7 @@ const user = userData.value;
   margin-bottom: 25px;
 }
 
-.edit-btn, .delete-btn {
+.edit-btn, .delete-btn, .save-btn {
   width: 100%;
   padding: 18px;
   margin-top: 15px;
@@ -114,6 +137,11 @@ const user = userData.value;
 
 .delete-btn {
   background: #d9534f;
+  color: white;
+}
+
+.save-btn {
+  background: #029f9f;
   color: white;
 }
 

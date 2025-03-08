@@ -35,6 +35,7 @@ const checkLoginStatus = () => {
 const logout = () => {
   logoutUser();
   isLoggedIn.value = false;
+  navigateTo('/login');
 };
 
 onMounted(() => {

@@ -4,16 +4,18 @@ export default defineEventHandler(async (event) => {
     try {
         // Extract query parameters
         const query = getQuery(event);
-        const token = query.token as string;
-        if (!token) {
-            throw new Error("Missing token parameter");
+        const id = query.id as number;
+        if (!id) {
+            throw new Error("Missing id parameter");
         }
 
-        // Get user data using the token
-        const userData = await event.context.$readUserToken(token);
-
+        const [rows, __] = await event.context.$mysql.query('SELECT id, role, first_name, last_name, email FROM users where ID = ?', [id]);
+        if(rows.length === 0) {
+            throw new Error("No user found with id");
+        }
+        const userData = rows[0];
         if (!userData || !userData.id) {
-            throw new Error("Invalid or expired token");
+            throw new Error("Invalid id");
         }
 
         // Fetch profile data from MySQL using user ID
@@ -26,7 +28,7 @@ export default defineEventHandler(async (event) => {
             throw new Error("Profile not found");
         }
 
-        return profile[0]; // Return the first row
+        return {...profile[0], user: userData}; // Return the first row
     } catch (error: any) {
         return sendError(event, new Error(error.message));
     }

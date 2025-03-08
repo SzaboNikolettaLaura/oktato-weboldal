@@ -10,35 +10,33 @@ export type IProfile = {
     user: IUser | null;
 }
 
-const useProfileData = async () => {
-
-    const {userData} = useUserData();
+const useProfileData = async (id: number) => {
     const init = async (): Promise<IProfile> => {
-        if(userData.value.role === 'guest') {
+        if(!id) {
             return {
-                id: 0,
+                id: id,
                 specialization: '',
                 group: '',
                 initialScore: null,
                 year: null,
-                user: userData.value
+                user: null
             }
         }
         try {
-            const profile = await axios<IProfile>('/api/profile', {params: {token: userData.value.token}});
-            return {...profile.data, user: userData.value};
+            const profile = await axios<IProfile>('/api/profile', {params: {id}});
+            return profile.data;
         } catch(e) {
             return {
-                id: 0,
+                id: id,
                 specialization: '',
                 group: '',
                 initialScore: null,
                 year: null,
-                user: userData.value
+                user: null
             }
         }
     }
-    const profileData = await useAsyncData<IProfile>('profile', init);
+    const profileData = await useAsyncData<IProfile>(`profile-${id}`, init);
     
     return {
         profileData: profileData.data

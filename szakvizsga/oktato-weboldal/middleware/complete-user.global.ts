@@ -1,6 +1,6 @@
 export default defineNuxtRouteMiddleware(async (to, from) => {
-  const {profileData} = await useProfileData();
-  console.log(profileData.value);
+  const {userData} = useUserData();
+  const {profileData} = await useProfileData(userData.value.id);
   if(profileData.value?.user?.role === 'diak') {
     if(profileData.value.initialScore === null) {
       if(to.name !== 'testpage') {

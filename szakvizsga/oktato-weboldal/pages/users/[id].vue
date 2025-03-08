@@ -61,7 +61,7 @@ import Nav from '@/components/Nav.vue';
 const route = useRoute();
 const {id} = route.params;
 const {userData} = useUserData();
-const {profileData} = await useProfileData(id);
+const {profileData, setProfileData} = await useProfileData(id);
 const profile = profileData.value;
 const user = profile.user;
 if(!user) {
@@ -78,6 +78,7 @@ const save = () => {
   params: { token: userData.value.token }
 }).then(() => {
   toggleEditing();
+  setProfileData(profile);
 }).catch(error => {
   console.error("Update failed:", error);
 });

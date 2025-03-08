@@ -38,8 +38,16 @@ const useProfileData = async (id: number) => {
     }
     const profileData = await useAsyncData<IProfile>(`profile-${id}`, init);
     
+    const setProfileData = (profile: IProfile) => {
+        profileData.data.value!.group = profile.group
+        profileData.data.value!.specialization = profile.specialization
+        profileData.data.value!.year = profile.year
+        profileData.data.value!.user = profile.user
+    }
+
     return {
-        profileData: profileData.data
+        profileData: profileData.data,
+        setProfileData
     }
 }
 export default useProfileData

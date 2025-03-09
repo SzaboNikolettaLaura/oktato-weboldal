@@ -99,7 +99,7 @@ export default {
   font-size: 24px;
   font-weight: bold;
   color: #09122C;
-  margin-bottom: 40px;
+  margin-bottom: 8px;
 }
 
 .input-group {
@@ -130,6 +130,7 @@ select {
   border: 1px solid #ccc;
   border-radius: 5px;
   box-sizing: border-box;
+  background-color: white;
 }
 
 select {
@@ -145,7 +146,7 @@ select {
   border-radius: 5px;
   font-size: 16px;
   cursor: pointer;
-  margin-top: 50px;
+  margin-top: 8px;
 }
 
 .login-text {

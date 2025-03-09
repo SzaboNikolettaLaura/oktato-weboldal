@@ -18,8 +18,8 @@
             <input type="checkbox" id="remember">
             <label for="remember">Maradjak bejelentkezve</label>
           </div>
-          <a href="#" class="forgot-password">Elfelejtetted a jelszavad?</a>
         </div>
+        <a href="#" class="forgot-password">Elfelejtetted a jelszavad?</a>
 
         <button type="submit" class="login-button">Bejelentkezés</button>
       </form>
@@ -87,19 +87,22 @@
 
 .input-group {
   margin-bottom: 25px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
 }
 
 label {
   display: block;
   text-align: left;
   font-size: 14px;
-  margin-bottom: 5px;
 }
 
 input {
   width: 100%;
   padding: 10px;
   border: 1px solid #ccc;
+  background-color: white;
   border-radius: 5px;
 }
 
@@ -115,7 +118,9 @@ input {
 .checkbox-label {
   display: flex;
   align-items: center;
+  flex-direction: row;
   white-space: nowrap;
+  gap: 8px;
 }
 
 .forgot-password {
@@ -132,7 +137,7 @@ input {
   border-radius: 5px;
   font-size: 16px;
   cursor: pointer;
-  margin-top: 150px;
+  margin-top: 16px;
 }
 
 .register-text {

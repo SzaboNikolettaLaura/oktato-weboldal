@@ -1,9 +1,13 @@
 <template>
     <div>
     <Nav />
-    <div class="container">
+
+    <div class="show-courses cursor-pointer" @click="toggleSidebar">
+      <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32"><path fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8h15M5 16h22M5 24h22M5 11l3-3l-3-3"/></svg>
+    </div>
+    <div class="container relative">
       <!-- Sidebar Section -->
-      <div class="sidebar">
+      <div class="sidebar" :class="{'closed': sidebarHidden}">
         <h2 class="sidebar-title">Courses</h2>
         <div class="sidebar-content">
           <ol class="space-y-2">
@@ -49,10 +53,16 @@
 
   // Store the selected course
   const selectedCourse = ref(null);
+
+  const sidebarHidden = ref(false);
   
   // Select a course to display
   function selectCourse(courseIndex, lectureIndex) {
     selectedCourse.value = courses[courseIndex];
+  }
+
+  function toggleSidebar() {
+    sidebarHidden.value = !sidebarHidden.value;
   }
   
   // Simulate the "Try it" button action
@@ -160,6 +170,41 @@
     ol li ol {
       counter-reset: item;
       padding-left: 2em; /* Adjust as needed for indentation */
+    }
+
+    .show-courses {
+      display: none;
+      width: 42px;
+      height: 42px;
+      border-radius: 100%;
+      padding: 8px;
+      background-color: #09122C;
+      color: white;
+
+      position: fixed;
+      bottom: 0;
+      right: 0;
+      margin: 16px;
+    }
+
+    @media (max-width: 768px) {
+      .sidebar {
+        position: absolute;
+        left: 0;
+        top:  0;
+        bottom: 0;
+        transition: transform 0.3s ease-in;
+      }
+
+      .sidebar.closed {
+        transform: translateX(-100%);
+      }
+
+      .show-courses {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+      }
     }
   </style>
   

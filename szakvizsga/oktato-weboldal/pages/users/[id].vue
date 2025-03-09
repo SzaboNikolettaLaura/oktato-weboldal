@@ -29,7 +29,7 @@
             <input v-model="user.email" type="email" :disabled="!editing" />
           </div>
         </div>
-        <div class="form-row">
+        <div class="form-row" v-if="user.role === 'diak'">
           <div class="form-group">
             <label>Szak</label>
             <select v-model="profile.specialization" :disabled="!editing">

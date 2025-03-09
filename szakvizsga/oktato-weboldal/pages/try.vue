@@ -7,14 +7,13 @@
       </div>
     
       <div class="columns">
-        <MonacoEditor 
-          class="code-column" 
-          :options="{ minimap: { enabled: false } }" 
+        <MonacoEditor class="code-column flex-1 h-full"
+          :options="{ minimap: { enabled: false }, automaticLayout: true }" 
           v-model="editor" 
           lang="html" 
         />
     
-        <div class="preview-column">
+        <div class="preview-column flex-1 h-full">
           <iframe v-if="iframeSrc" :srcdoc="iframeSrc" frameborder="0" width="100%" height="100%"></iframe>
         </div>
       </div>
@@ -22,30 +21,40 @@
   </div>
 </template>
 
-<script>
-export default {
-  data() {
-    return {
-      iframeSrc: '',
-      editor: '', 
-    };
-  },
-  mounted() {},
-  methods: {
-    runCode() {
-      try {
-        const htmlCode = this.editor;
-        if (htmlCode.trim() === "") {
-          alert("Please write some HTML code before running.");
-          return;
-        }
-        this.iframeSrc = htmlCode;
-      } catch (error) {
-        console.error("Error running code:", error);
-        alert("An error occurred while running the code.");
-      }
-    },
-  },
+<script setup>
+import { ref } from 'vue';
+import { useRoute } from 'vue-router';
+
+import courses from '../data/courses.js';
+
+const route = useRoute(); // Access the query params
+const iframeSrc = ref('');
+const queryParams = route.query;
+const exerciseId = queryParams.exerciseId;
+let exerciseCode = '';
+if(exerciseId) {
+  const exercises = courses.flatMap(c => c.lectures.flatMap(l => l.exercises));
+  const exercise = exercises.find(e => e.exerciseId === exerciseId);
+  if(exercise) {
+    exerciseCode = exercise.code || '';
+  }
+}
+const editor = ref(exerciseCode);
+
+
+// Function to run the code
+const runCode = () => {
+  try {
+    const htmlCode = editor.value;
+    if (htmlCode.trim() === '') {
+      alert('Please write some HTML code before running.');
+      return;
+    }
+    iframeSrc.value = htmlCode;
+  } catch (error) {
+    console.error('Error running code:', error);
+    alert('An error occurred while running the code.');
+  }
 };
 </script>
 
@@ -128,8 +137,7 @@ iframe {
   }
 
   .code-column, .preview-column {
-    flex: none;
-    width: 100%;
+    flex: 1 1 0%;
   }
 
   .container {

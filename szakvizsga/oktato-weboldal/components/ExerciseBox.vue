@@ -14,10 +14,12 @@
     }
   });
   
+  
   // Simulate the "Try it" button action
   function tryExercise(exerciseId) {
-    alert(`You clicked "Try it" for exercise ${exerciseId}`);
+    navigateTo(`/try?exerciseId=${exerciseId}`)
   }
+
   </script>
   
   <style scoped>

@@ -1,5 +1,6 @@
 export default defineNuxtRouteMiddleware(async (to, from) => {
-    const {profileData} = await useProfileData();
+    const {userData} = useUserData();
+    const {profileData} = await useProfileData(userData.value.id);
     if(profileData.value?.initialScore !== null) {
         return navigateTo('/landing');
     }

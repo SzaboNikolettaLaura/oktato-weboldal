@@ -8,7 +8,10 @@
     <div class="container relative">
       <!-- Sidebar Section -->
       <div class="sidebar" :class="{'closed': sidebarHidden}">
-        <h2 class="sidebar-title">Courses</h2>
+        <div class="flex flex-row justify-between items-center flex-wrap mb-8">
+          <h2 class="sidebar-title">Courses</h2>
+          <button v-if="userData.role === 'tanar'" type="button" class="rounded-full w-8 h-8 text-white flex items-center justify-center cursor-pointer p-4 m-4 bg-green-500">+</button>
+        </div>
         <div class="sidebar-content">
           <ol class="space-y-2">
             <li :class="{
@@ -47,8 +50,11 @@
   
   <script setup>
   import { ref } from 'vue';
-  import courses from '../data/courses.js';
+
+  const {courseData: courses} = useCourses();
   
+  const {userData} = useUserData();
+ 
   const lastUnlocked = 1;
 
   // Store the selected course
@@ -65,10 +71,6 @@
     sidebarHidden.value = !sidebarHidden.value;
   }
   
-  // Simulate the "Try it" button action
-  function tryExercise(exerciseId) {
-    alert(`You clicked "Try it" for exercise ${exerciseId}`);
-  }
   function splitContentWithExercises(content, exercises) {
   let contentParts = content.split(/(@\{exercise[^\}]+\})/); // Split content by exercise placeholders
   let result = [];
@@ -107,7 +109,6 @@
   
   .sidebar-title {
     font-size: 24px;
-    margin-bottom: 20px;
   }
   
   .sidebar-content ul {

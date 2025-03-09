@@ -25,7 +25,7 @@ export default defineEventHandler(async (event) => {
         );
 
         if (!profile.length) {
-            throw new Error("Profile not found");
+            return {user: userData}
         }
 
         return {...profile[0], user: userData}; // Return the first row

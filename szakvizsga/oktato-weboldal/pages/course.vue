@@ -10,16 +10,16 @@
       <div class="sidebar" :class="{'closed': sidebarHidden}">
         <div class="flex flex-row justify-between items-center flex-wrap mb-8">
           <h2 class="sidebar-title">Courses</h2>
-          <button v-if="userData.role === 'tanar'" type="button" class="rounded-full w-8 h-8 text-white flex items-center justify-center cursor-pointer p-4 m-4 bg-green-500">+</button>
+          <NuxtLink to="/lessonedit" v-if="userData.role === 'tanar'" class="rounded-full w-8 h-8 text-white flex items-center justify-center cursor-pointer p-4 m-4 bg-green-500">+</NuxtLink>
         </div>
         <div class="sidebar-content">
           <ol class="space-y-2">
             <li :class="{
                 'text-[#1f5f5f]': lastUnlocked > courseIndex,
-                'bg-gray-200': selectedCourse?.courseTitle === course.courseTitle
+                'bg-gray-200': selectedCourse?.title === course.title
             }" class="cursor-pointer" v-for="(course, courseIndex) in courses" :key="courseIndex" @click="lastUnlocked >= courseIndex ? selectCourse(courseIndex, 0) : () => {}">
               <span
-                >{{ course.courseTitle }}</span>
+                >{{ course.title }}</span>
               <ol v-if="course.lectures.length > 1" class="space-y-2">
                 <li class="cursor-pointer" v-for="(lecture, lectureIndex) in course.lectures" :key="lectureIndex">
                     {{ lecture.title }}
@@ -32,7 +32,7 @@
   
       <!-- Main Section -->
       <div class="main">
-        <h1>{{ selectedCourse?.courseTitle }}</h1>
+        <h1>{{ selectedCourse?.title }}</h1>
         <div v-for="(lecture, lectureIndex) in selectedCourse?.lectures" :key="lectureIndex">
           <h2 class="text-lg">{{ lecture.title }}</h2>
           <div v-for="(part, partIndex) in splitContentWithExercises(lecture.content, lecture.exercises)" :key="partIndex">
@@ -51,8 +51,7 @@
   <script setup>
   import { ref } from 'vue';
 
-  const {courseData: courses} = useCourses();
-  
+  const {courseData: courses} = await useCourses();
   const {userData} = useUserData();
  
   const lastUnlocked = 1;
@@ -64,7 +63,7 @@
   
   // Select a course to display
   function selectCourse(courseIndex, lectureIndex) {
-    selectedCourse.value = courses[courseIndex];
+    selectedCourse.value = courses.value[courseIndex];
   }
 
   function toggleSidebar() {
@@ -72,13 +71,13 @@
   }
   
   function splitContentWithExercises(content, exercises) {
-  let contentParts = content.split(/(@\{exercise[^\}]+\})/); // Split content by exercise placeholders
+  let contentParts = content.split(/(@\{[^\}]+\})/); // Split content by exercise placeholders
   let result = [];
 
   contentParts.forEach(part => {
-    if (part.startsWith('@{exercise')) {
-      const exerciseId = part.match(/exercise(\d+)/)[1]; // Extract exercise ID
-      const exercise = exercises.find(ex => ex.exerciseId === `exercise${exerciseId}`);
+    if (part.startsWith('@{')) {
+      const exerciseId = Number(part.match(/(\d+)/)[1]); // Extract exercise ID
+      const exercise = exercises.find(ex => ex.id === exerciseId);
       if (exercise) {
         result.push({
           type: 'exercise',

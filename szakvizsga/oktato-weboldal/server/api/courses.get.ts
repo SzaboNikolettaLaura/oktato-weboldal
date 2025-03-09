@@ -13,13 +13,13 @@ export default defineEventHandler(async (event) => {
     // For each course, fetch its associated lectures
     for (const course of courses) {
       const [lectures, __] = await event.context.$mysql.query(`
-        SELECT * FROM lectures WHERE course_id = ?
+        SELECT * FROM lectures WHERE courseId = ?
       `, [course.id]);
 
       // Add exercises to each lecture
       for (const lecture of lectures) {
         const [exercises, __] = await event.context.$mysql.query(`
-          SELECT * FROM exercises WHERE lecture_id = ?
+          SELECT * FROM exercises WHERE lectureId = ?
         `, [lecture.id]);
 
         // Add the exercises to the lecture

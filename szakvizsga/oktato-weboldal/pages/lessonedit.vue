@@ -40,7 +40,8 @@
   import { ref } from 'vue';
   import Nav from '@/components/Nav.vue';
 import axios from 'axios';
-  
+
+  const {userData} = useUserData();
   const {courseData} = await useCourses();
   const lessonBlocks = ref([]);
   const visibility = ref(true);

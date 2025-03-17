@@ -24,6 +24,14 @@
         <button type="submit" class="login-button">Bejelentkezés</button>
       </form>
       <p class="register-text">Nincs még fiókod? <NuxtLink to="/register">Kattints ide!</NuxtLink></p>
+
+
+        
+      <button @click="handleOpenAi" class="login-button">OPENAI</button>
+      <p style="display:block; background:white;
+      padding: 20px;">
+        {{openAiResp}}
+      </p>
     </div>
   </div>
 </template>
@@ -41,6 +49,16 @@
   });
 
   const router = useRouter();
+
+  const openAiResp = ref('')
+
+  const handleOpenAi = async () => {
+    const response = await axios.post('/api/openai', {
+      prompt: `How much wood would a woodchuck chuck if a woodchuck would chuck wood?`
+    });
+
+    openAiResp.value = response.data
+  }
 
   const handleSubmit = async () => {
     try {

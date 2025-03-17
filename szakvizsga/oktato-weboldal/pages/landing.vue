@@ -28,7 +28,9 @@
           <div class="w-1/2 pl-8">
             <h2 class="text-4xl font-extrabold">Fejleszd a tudásod!</h2>
             <p class="mt-6 text-lg text-gray-700">Próbálj ki különböző feladatokat, hogy fejleszd a JavaScript tudásodat!</p>
-            <button class="mt-6 bg-[#09122C] text-white font-semibold px-6 py-3 rounded-full shadow-md hover:bg-[#0a1a2b] transition" @click="startTasks">Feladatok kipróbálása</button>
+            <div class="mt-6">
+              <NuxtLink to="/register" class="bg-[#09122C] text-white font-semibold px-3 py-5 rounded-full shadow-md hover:bg-[#0a1a2b] transition w-auto text-center block">Feladatok kipróbálása</NuxtLink>
+            </div>
           </div>
         </div>
       </section>
@@ -38,7 +40,9 @@
           <div class="w-1/2 pr-8">
             <h2 class="text-4xl font-extrabold">Teszt kitöltése</h2>
             <p class="mt-6 text-lg text-gray-700">Indítsd el a tesztet, hogy ellenőrizd tudásodat JavaScript-ben!</p>
-            <button class="mt-6 bg-[#09122C] text-white font-semibold px-6 py-3 rounded-full shadow-md hover:bg-[#0a1a2b] transition">Teszt kitöltése</button>
+            <div class="mt-6">
+              <NuxtLink to="/register" class="bg-[#09122C] text-white font-semibold px-3 py-5 rounded-full shadow-md hover:bg-[#0a1a2b] transition w-auto text-center block">Teszt kitöltése</NuxtLink>
+            </div>
           </div>
           <div class="w-1/2">
             <img src="/laptop-phone.jpg" alt="Laptop and Phone" class="w-full h-auto rounded-lg shadow-lg" />
@@ -60,11 +64,6 @@ export default {
     Nav,
     Footer,
   },
-  methods: {
-    startTasks() {
-      alert("A feladatok elindultak! Kezd el kipróbálni a JavaScript feladatokat!");
-    }
-  }
 };
 </script>
 
@@ -83,7 +82,7 @@ section.bg {
   text-align: center;
 }
 
-section.bg h1 {
+section.bgh1 {
   font-size: 3rem;
   font-weight: bold;
   line-height: 1.2;

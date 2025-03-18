@@ -1,6 +1,6 @@
 <template>
   <div>
-    <div v-if="isModalOpen" class="modal-overlay" @click.self="closeModal">
+    <div class="modal-overlay" @click.self="closeModal">
       <div class="form-builder-modal">
         <h1>Teszt létrehozása</h1>
         <div class="form-title-container">
@@ -37,17 +37,14 @@ export default {
   components: {
     FormQuestion
   },
+  props: ['block', 'save', 'close'],
   data() {
     return {
-      isModalOpen: true,
-      formTitle: '',
-      questions: [{ title: '', type: 'text', options: [] }]
+      formTitle: this.block.title || '',
+      questions: this.block.questions || [{ title: '', type: 'text', options: [] }]
     };
   },
   methods: {
-    closeModal() {
-      this.isModalOpen = false;
-    },
     addQuestion() {
       this.questions.push({ title: '', type: 'text', options: [] });
     },
@@ -55,12 +52,14 @@ export default {
       this.questions.splice(index, 1);
     },
     submitForm() {
-      const formData = {
+      const result = {
         title: this.formTitle,
         questions: this.questions
-      };
-      console.log("Teszt adat beküldve", formData);
-      this.closeModal();
+      }
+      this.$emit('save', result);
+    },
+    closeModal() {
+      this.$emit('close');
     }
   }
 };

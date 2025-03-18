@@ -23,6 +23,9 @@ function readUserToken(token: string) {
         if('password' in userData) {
             user["password"] = userData.password;
         }
+        if('role' in userData) {
+            user["role"] = userData.role;
+        }
         return user;
     } catch(e) {
         console.error('Invalid token supplied');

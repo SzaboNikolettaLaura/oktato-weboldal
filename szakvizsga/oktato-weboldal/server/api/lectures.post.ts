@@ -4,15 +4,15 @@ export default defineEventHandler(async (event) => {
   try {
     // Parse the incoming JSON body
     const { course, blocks, title, token } = await readBody(event);
-    
+    console.log(1);
     // Retrieve the user from the token
     const user = event.context.$readUserToken(token);
-    
+    console.log(user);
     // Check if the user's role is "tanar"
     if (user.role !== "tanar") {
       return sendError(event, new Error("Unauthorized: Only users with the 'tanar' role can perform this action."));
     }
-
+    console.log('hello?');
     // Proceed with inserting the lecture data into the database
     const [lectureResult, __] = await event.context.$mysql.query(`
       INSERT INTO lectures (courseId, title, content)
@@ -32,6 +32,11 @@ export default defineEventHandler(async (event) => {
         `, [lectureId, block.description, block.content]);
         const exerciseId = exerciseResult.insertId;
         content += `\n@{${exerciseId}}\n`
+      } else if(block.type === 'test') {
+        await event.context.$mysql.query(`
+            INSERT INTO tests(lectureId, title, questions)
+            VALUES(?, ?, ?)
+          `, [lectureId, block.title, JSON.stringify(block.questions)]);
       }
     }
 
@@ -42,6 +47,7 @@ export default defineEventHandler(async (event) => {
     return { message: 'Course with lectures and exercises added successfully!' };
 
   } catch (error: any) {
+    console.log(error);
     // Handle any errors and send the error response
     return sendError(event, new Error(error.message));
   }

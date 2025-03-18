@@ -6,6 +6,7 @@
         <span>Kurzus: </span>
         <select v-model="course" class="filter-input">
           <option value="" selected="selected">Kurzus</option>
+          <option v-bind:value="c.id" v-for="c of courseData" v-bind:key="c.id">{{ c.title }}</option>
         </select>
       </div>
       <div>
@@ -32,7 +33,7 @@
           </div>
           <div v-else-if="block.type === 'test'" class="test-block">
             <span class="test-block-label">Teszt Blokk</span>
-            <p>{{ block.description }}</p>
+            <p>{{ block.title }}</p>
             <div class="block-buttons">
               <button @click="removeBlock(index)" class="btn btn-danger">Törlés</button>
               <button @click="openModal(block, index)" class="btn btn-primary">Módosítás</button> <!-- Modified Button -->
@@ -78,10 +79,8 @@ const addCodeBlock = () => {
 const addTestBlock = () => {
   lessonBlocks.value.push({
     type: 'test',
-    description: '',
-    questionType: 'multipleChoice',
-    options: [''],
-    completionItems: [''],
+    title: '',
+    questions: []
   });
 };
 
@@ -98,7 +97,7 @@ const toggleVisibility = () => {
 };
 
 const saveLesson = () => {
-  axios.post('/api/lectures', { course: course.value, blocks: lessonBlocks.value, title: lectureTitle.value })
+  axios.post('/api/lectures', { course: course.value, blocks: lessonBlocks.value, title: lectureTitle.value, token: userData.value.token })
     .then(() => {
       navigateTo('/course');
     });
@@ -110,7 +109,7 @@ const openModal = (block, index) => {
 };
 
 const saveBlockChanges = (updatedBlock) => {
-  lessonBlocks.value[currentTestBlock.value.index] = updatedBlock; // Update the lesson block
+  lessonBlocks.value[currentTestBlock.value.index] = {...updatedBlock, type: 'test'}; // Update the lesson block
   closeModal(); // Close the modal
 };
 

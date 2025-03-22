@@ -53,8 +53,11 @@
   const openAiResp = ref('')
 
   const handleOpenAi = async () => {
-    const response = await axios.post('/api/openai', {
-      prompt: `How much wood would a woodchuck chuck if a woodchuck would chuck wood?`
+    // const response = await axios.post('/api/openai', {
+    //   prompt: `How much wood would a woodchuck chuck if a woodchuck would chuck wood?`
+    // });
+    const response = await axios.post('/api/gemini', {
+      prompt: 'How much wood would a woodchuck chuck if a woodchuck would chuck wood?'
     });
 
     openAiResp.value = response.data

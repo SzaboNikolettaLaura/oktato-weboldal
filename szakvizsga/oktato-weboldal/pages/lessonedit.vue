@@ -36,14 +36,19 @@
             <p>{{ block.title }}</p>
             <div class="block-buttons">
               <button @click="removeBlock(index)" class="btn btn-danger">Törlés</button>
-              <button @click="openModal(block, index)" class="btn btn-primary">Módosítás</button> <!-- Modified Button -->
+              <button @click="openModal(block, index)" class="btn btn-primary">Módosítás</button>
             </div>
           </div>
         </div>
       </div>
     </div>
 
-    <!-- Modal -->
+    <button @click="toggleInputField" class="ai-generation-btn">AI</button>
+
+    <div v-if="showInputField" class="ai-input-container">
+      <input type="text" v-model="aiInput" class="ai-input" placeholder="Enter AI prompt...">
+    </div>
+
     <TestBlockEditor
       v-if="isModalVisible"
       :block="currentTestBlock"
@@ -67,6 +72,8 @@ const course = ref(courseData.value[0].id);
 const lectureTitle = ref('');
 const isModalVisible = ref(false);
 const currentTestBlock = ref(null);
+const showInputField = ref(false);
+const aiInput = ref('');
 
 const addTextBlock = () => {
   lessonBlocks.value.push({ type: 'text', content: '' });
@@ -104,18 +111,22 @@ const saveLesson = () => {
 };
 
 const openModal = (block, index) => {
-  currentTestBlock.value = { ...block, index }; // Store the block to edit
-  isModalVisible.value = true; // Show the modal
+  currentTestBlock.value = { ...block, index };
+  isModalVisible.value = true;
 };
 
 const saveBlockChanges = (updatedBlock) => {
-  lessonBlocks.value[currentTestBlock.value.index] = {...updatedBlock, type: 'test'}; // Update the lesson block
-  closeModal(); // Close the modal
+  lessonBlocks.value[currentTestBlock.value.index] = {...updatedBlock, type: 'test'};
+  closeModal();
 };
 
 const closeModal = () => {
-  isModalVisible.value = false; // Hide the modal
-  currentTestBlock.value = null; // Clear the current block
+  isModalVisible.value = false;
+  currentTestBlock.value = null;
+};
+
+const toggleInputField = () => {
+  showInputField.value = !showInputField.value;
 };
 </script>
 
@@ -223,5 +234,48 @@ const closeModal = () => {
   border: 1px solid #ccc;
   padding: 8px;
   border-radius: 4px;
+}
+
+.ai-generation-btn {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  background-color: #007bff;
+  color: white;
+  border: none;
+  border-radius: 50%;
+  padding: 15px;
+  font-size: 24px;
+  cursor: pointer;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  width: 70px;
+  height: 70px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.ai-generation-btn:hover {
+  background-color: #0056b3;
+}
+
+
+.ai-input-container {
+  position: fixed;
+  bottom: 70px;
+  right: 20px;
+  background-color: white;
+  padding: 15px;
+  border-radius: 8px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  width: 250px;
+}
+
+.ai-input {
+  width: 100%;
+  padding: 10px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  font-size: 14px;
 }
 </style>

@@ -1,12 +1,15 @@
 <template>
     <div class="exercise-box">
       <p>{{ exercise.description }}</p>
-      <button @click="tryExercise(exercise.exerciseId)">Try it</button>
+      <button @click="tryExercise(exercise.id)">Try it</button>
     </div>
   </template>
   
   <script setup>
-  // Props: Exercise object containing the description and exerciseId
+  import { useRouter } from 'vue-router';
+  const router = useRouter();
+
+  // Props: Exercise object containing the description and id
   defineProps({
     exercise: {
       type: Object,
@@ -14,12 +17,10 @@
     }
   });
   
-  
-  // Simulate the "Try it" button action
+  // Navigate to the try page with the exercise ID
   function tryExercise(exerciseId) {
-    navigateTo(`/try?exerciseId=${exerciseId}`)
+    router.push(`/try?exerciseId=${exerciseId}`);
   }
-
   </script>
   
   <style scoped>

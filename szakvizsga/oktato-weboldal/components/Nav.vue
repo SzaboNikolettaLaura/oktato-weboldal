@@ -17,7 +17,7 @@
 
       <li v-if="isLoggedIn"><NuxtLink to="/course">Lecke</NuxtLink></li>
       <li v-if="isLoggedIn"><NuxtLink to="/messages">Üzenetek</NuxtLink></li>
-      <li v-if="isLoggedIn"><NuxtLink to="/students">Diákok</NuxtLink></li>
+      <li v-if="isLoggedIn && userData.role !== 'diak'"><NuxtLink to="/students">Diákok</NuxtLink></li>
       <li v-if="isLoggedIn">
         <span class="login-text" @click="logout">Kijelentkezés</span>
       </li>

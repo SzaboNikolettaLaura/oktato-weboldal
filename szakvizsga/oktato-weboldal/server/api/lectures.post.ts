@@ -3,7 +3,7 @@ import { defineEventHandler, sendError } from 'h3';
 export default defineEventHandler(async (event) => {
   try {
     // Parse the incoming JSON body
-    const { course, blocks, title, token } = await readBody(event);
+    const { course, blocks, title, token, visibility } = await readBody(event);
     console.log(1);
     // Retrieve the user from the token
     const user = event.context.$readUserToken(token);
@@ -15,9 +15,9 @@ export default defineEventHandler(async (event) => {
     console.log('hello?');
     // Proceed with inserting the lecture data into the database
     const [lectureResult, __] = await event.context.$mysql.query(`
-      INSERT INTO lectures (courseId, title, content)
-      VALUES (?, ?, ?)
-    `, [course, title, '']);
+      INSERT INTO lectures (courseId, title, content, visible)
+      VALUES (?, ?, ?, ?)
+    `, [course, title, '', visibility]);
     console.log(blocks);
     const lectureId = lectureResult.insertId;
     let content = '';

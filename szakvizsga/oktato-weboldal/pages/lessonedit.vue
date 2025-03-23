@@ -16,7 +16,14 @@
       <button @click="addTextBlock" class="action-btn">Szöveg+</button>
       <button @click="addCodeBlock" class="action-btn">Kód+</button>
       <button @click="addTestBlock" class="action-btn">Teszt+</button>
-      <button @click="toggleVisibility" class="action-btn">Láthatóság</button>
+      <button @click="toggleVisibility" class="action-btn" :class="{ 'visibility-on': visibility, 'visibility-off': !visibility }">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path v-if="visibility" d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+          <path v-if="visibility" d="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z"></path>
+          <path v-if="!visibility" d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path>
+        </svg>
+        {{ visibility ? 'Látható' : 'Rejtett' }}
+      </button>
       <button @click="saveLesson" class="action-btn">Mentés</button>
     </div>
 
@@ -25,11 +32,11 @@
       <div class="blocks">
         <div v-for="(block, index) in lessonBlocks" :key="index" class="block">
           <div v-if="block.type === 'text'">
-            <textarea v-model="block.content" placeholder="Írd ide a magyarázatot..." />
+            <textarea v-model="block.content" placeholder="Írd ide a magyarázatot..." class="block-textarea" />
           </div>
-          <div v-else-if="block.type === 'code'">
+          <div v-else-if="block.type === 'code'" class="code-block">
             <input class="p-4 w-full" type="text" v-model="block.description" placeholder="Kód leírása">
-            <pre contenteditable="true" @input="updateCode(index, $event)"></pre>
+            <div :id="`monaco-editor-${index}`" class="monaco-container"></div>
           </div>
           <div v-else-if="block.type === 'test'" class="test-block">
             <span class="test-block-label">Teszt Blokk</span>
@@ -59,21 +66,25 @@
 </template>
 
 <script setup>
-import { ref } from 'vue';
+import { ref, onMounted, onUnmounted, nextTick } from 'vue';
 import Nav from '@/components/Nav.vue';
 import axios from 'axios';
 import TestBlockEditor from '@/components/TestBlockEditor.vue';
+import { useRoute } from 'vue-router';
+import * as monaco from 'monaco-editor';
 
+const route = useRoute();
 const { userData } = useUserData();
 const { courseData } = await useCourses();
 const lessonBlocks = ref([]);
 const visibility = ref(true);
-const course = ref(courseData.value[0].id);
+const course = ref('');
 const lectureTitle = ref('');
 const isModalVisible = ref(false);
 const currentTestBlock = ref(null);
 const showInputField = ref(false);
 const aiInput = ref('');
+const editors = {};
 
 const addTextBlock = () => {
   lessonBlocks.value.push({ type: 'text', content: '' });
@@ -81,6 +92,10 @@ const addTextBlock = () => {
 
 const addCodeBlock = () => {
   lessonBlocks.value.push({ type: 'code', content: '', description: '' });
+  nextTick(() => {
+    const index = lessonBlocks.value.length - 1;
+    initMonacoEditor(index, '');
+  });
 };
 
 const addTestBlock = () => {
@@ -92,11 +107,11 @@ const addTestBlock = () => {
 };
 
 const removeBlock = (index) => {
+  if (lessonBlocks.value[index].type === 'code' && editors[index]) {
+    editors[index].dispose();
+    delete editors[index];
+  }
   lessonBlocks.value.splice(index, 1);
-};
-
-const updateCode = (index, event) => {
-  lessonBlocks.value[index].content = event.target.innerText;
 };
 
 const toggleVisibility = () => {
@@ -104,9 +119,29 @@ const toggleVisibility = () => {
 };
 
 const saveLesson = () => {
-  axios.post('/api/lectures', { course: course.value, blocks: lessonBlocks.value, title: lectureTitle.value, token: userData.value.token })
+  // Update content from editors before saving
+  lessonBlocks.value.forEach((block, index) => {
+    if (block.type === 'code' && editors[index]) {
+      block.content = editors[index].getValue();
+    }
+  });
+  const lectureId = route.query.id;
+  const method = lectureId ? 'patch' : 'post';
+  const url = lectureId ? `/api/lectures?id=${lectureId}` : '/api/lectures';
+  console.log(url);
+  axios[method](url, { 
+    course: course.value, 
+    blocks: lessonBlocks.value, 
+    title: lectureTitle.value,
+    visibility: visibility.value,
+    token: userData.value.token 
+  })
     .then(() => {
       navigateTo('/course');
+    })
+    .catch(error => {
+      console.error('Error saving lecture:', error);
+      alert('Failed to save lecture. Please try again.');
     });
 };
 
@@ -128,6 +163,72 @@ const closeModal = () => {
 const toggleInputField = () => {
   showInputField.value = !showInputField.value;
 };
+
+const initMonacoEditor = (index, content) => {
+  const container = document.getElementById(`monaco-editor-${index}`);
+  if (!container) return;
+
+  if (editors[index]) {
+    editors[index].dispose();
+  }
+
+  editors[index] = monaco.editor.create(container, {
+    value: content,
+    language: 'html',
+    theme: 'vs',
+    minimap: { enabled: false },
+    automaticLayout: true,
+    fontSize: 14,
+    lineNumbers: 'on',
+    roundedSelection: false,
+    scrollBeyondLastLine: false,
+    readOnly: false,
+    cursorStyle: 'line'
+  });
+};
+
+// Load lecture data if ID is present
+onMounted(async () => {
+  const lectureId = route.query.id;
+  if (lectureId) {
+    try {
+      const response = await axios.get(`/api/lectures?id=${lectureId}`);
+      const lecture = response.data;
+      // Set the course and title
+      course.value = lecture.courseId;
+      lectureTitle.value = lecture.title;
+      visibility.value = lecture.visible.data[0]; // Set visibility, default to true if not set
+      
+      // Set the blocks and trim text content
+      lessonBlocks.value = lecture.blocks.map(block => {
+        if (block.type === 'text') {
+          return {
+            ...block,
+            content: block.content.trim()
+          };
+        }
+        return block;
+      });
+
+      // Initialize Monaco editors for code blocks
+      nextTick(() => {
+        lessonBlocks.value.forEach((block, index) => {
+          if (block.type === 'code') {
+            initMonacoEditor(index, block.content);
+          }
+        });
+      });
+    } catch (error) {
+      console.error('Error loading lecture:', error);
+      // Handle error appropriately
+    }
+  }
+});
+
+// Clean up editors when component is unmounted
+onUnmounted(() => {
+  Object.values(editors).forEach(editor => editor.dispose());
+});
 </script>
 
 <style scoped>
@@ -173,6 +274,16 @@ const toggleInputField = () => {
   border: 1px solid #ccc;
   border-radius: 5px;
   position: relative;
+  width: 100%;
+}
+
+.block textarea {
+  width: 100%;
+  min-height: 100px;
+  padding: 10px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  resize: vertical;
 }
 
 .test-block {
@@ -259,7 +370,6 @@ const toggleInputField = () => {
   background-color: #0056b3;
 }
 
-
 .ai-input-container {
   position: fixed;
   bottom: 70px;
@@ -277,5 +387,42 @@ const toggleInputField = () => {
   border: 1px solid #ccc;
   border-radius: 4px;
   font-size: 14px;
+}
+
+.code-block {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.monaco-container {
+  height: 300px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.visibility-on {
+  background-color: #28a745 !important;
+  color: white;
+}
+
+.visibility-on:hover {
+  background-color: #218838 !important;
+}
+
+.visibility-off {
+  background-color: #dc3545 !important;
+  color: white;
+}
+
+.visibility-off:hover {
+  background-color: #c82333 !important;
+}
+
+.action-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 </style>

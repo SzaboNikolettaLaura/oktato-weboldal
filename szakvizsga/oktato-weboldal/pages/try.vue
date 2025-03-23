@@ -22,25 +22,35 @@
 </template>
 
 <script setup>
-import { ref } from 'vue';
+import { ref, onMounted } from 'vue';
 import { useRoute } from 'vue-router';
 
-import courses from '../data/courses.js';
-
-const route = useRoute(); // Access the query params
+const route = useRoute();
 const iframeSrc = ref('');
-const queryParams = route.query;
-const exerciseId = queryParams.exerciseId;
-let exerciseCode = '';
-if(exerciseId) {
-  const exercises = courses.flatMap(c => c.lectures.flatMap(l => l.exercises));
-  const exercise = exercises.find(e => e.exerciseId === exerciseId);
-  if(exercise) {
-    exerciseCode = exercise.code || '';
-  }
-}
-const editor = ref(exerciseCode);
+const editor = ref('');
+const { courseData } = await useCourses();
 
+// Function to find exercise by ID
+function findExerciseById(exerciseId) {
+  for (const course of courseData.value) {
+    for (const lecture of course.lectures) {
+      const exercise = lecture.exercises.find(e => e.id === Number(exerciseId));
+      if (exercise) return exercise;
+    }
+  }
+  return null;
+}
+
+// Load exercise data when component mounts
+onMounted(() => {
+  const exerciseId = route.query.exerciseId;
+  if (exerciseId) {
+    const exercise = findExerciseById(exerciseId);
+    if (exercise) {
+      editor.value = exercise.code || '';
+    }
+  }
+});
 
 // Function to run the code
 const runCode = () => {

@@ -15,6 +15,7 @@
       </div>
       <button @click="addTextBlock" class="action-btn">Szöveg+</button>
       <button @click="addCodeBlock" class="action-btn">Kód+</button>
+      <button @click="addHighlightBlock" class="action-btn">Kiemelés+</button>
       <button @click="addTestBlock" class="action-btn">Teszt+</button>
       <button @click="toggleVisibility" class="action-btn" :class="{ 'visibility-on': visibility, 'visibility-off': !visibility }">
         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -38,6 +39,9 @@
             <input class="p-4 w-full" type="text" v-model="block.description" placeholder="Kód leírása">
             <div :id="`monaco-editor-${index}`" class="monaco-container"></div>
           </div>
+          <div v-else-if="block.type === 'highlight'" class="highlight-block">
+            <textarea v-model="block.content" placeholder="Írd ide a kiemelendő fontos információt..." class="highlight-textarea" />
+          </div>
           <div v-else-if="block.type === 'test'" class="test-block">
             <span class="test-block-label">Teszt Blokk</span>
             <p>{{ block.title }}</p>
@@ -53,7 +57,17 @@
     <button @click="toggleInputField" class="ai-generation-btn">AI</button>
 
     <div v-if="showInputField" class="ai-input-container">
-      <input type="text" v-model="aiInput" class="ai-input" placeholder="Enter AI prompt...">
+      <input type="text" v-model="aiInput" class="ai-input" placeholder="Írd be a kérésed...">
+      <button @click="generateAIContent" class="generate-btn" :disabled="isGenerating">
+        <span v-if="!isGenerating">Generálás</span>
+        <span v-else class="loading">
+          <svg class="animate-spin" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+          </svg>
+          Generálás...
+        </span>
+      </button>
     </div>
 
     <TestBlockEditor
@@ -85,6 +99,7 @@ const currentTestBlock = ref(null);
 const showInputField = ref(false);
 const aiInput = ref('');
 const editors = {};
+const isGenerating = ref(false);
 
 const addTextBlock = () => {
   lessonBlocks.value.push({ type: 'text', content: '' });
@@ -96,6 +111,10 @@ const addCodeBlock = () => {
     const index = lessonBlocks.value.length - 1;
     initMonacoEditor(index, '');
   });
+};
+
+const addHighlightBlock = () => {
+  lessonBlocks.value.push({ type: 'highlight', content: '' });
 };
 
 const addTestBlock = () => {
@@ -185,6 +204,67 @@ const initMonacoEditor = (index, content) => {
     readOnly: false,
     cursorStyle: 'line'
   });
+};
+
+const generateAIContent = async () => {
+  if (!aiInput.value) return;
+  
+  isGenerating.value = true;
+  try {
+    const response = await axios.post('/api/gemini', {
+      prompt: aiInput.value + ' Magyarul válaszolj és kommentezd a kódot. Ha kódot generálsz, használd a ```html jelölést. A kód előtt használd a [KÓD LEÍRÁS] jelölést, és írd le röviden (max 5-6 szó) magyarul, hogy mit csinál a kód. A kód mindig legyen minimális, csak a szükséges elemeket tartalmazza. Ne használj markdown formázást (**), csak sima szöveget. Ne használj bevezető mondatokat vagy felesleges magyarázatokat, csak a tényleges leckét és kódot add meg.'
+    });
+    
+    const content = response.data;
+    
+    // Parse content to separate text and code
+    const parts = content.split('```html');
+    
+    // Extract description using the [KÓD LEÍRÁS] delimiter
+    const descriptionMatch = parts[0].match(/\[KÓD LEÍRÁS\](.*?)(?=\n|$)/s);
+    const description = descriptionMatch ? descriptionMatch[1].trim() : '';
+    
+    // Remove description from text content
+    let textContent = parts[0].trim();
+    if (descriptionMatch) {
+      textContent = textContent.replace(/\[KÓD LEÍRÁS\].*?(?=\n|$)/s, '').trim();
+    }
+    
+    // Add text part if exists
+    if (textContent) {
+      if (!lessonBlocks.value.some(block => block.type === 'text')) {
+        addTextBlock();
+      }
+      const lastTextBlockIndex = [...lessonBlocks.value].reverse().findIndex(block => block.type === 'text');
+      const textIndex = lessonBlocks.value.length - 1 - lastTextBlockIndex;
+      lessonBlocks.value[textIndex].content = textContent;
+    }
+    
+    // Add code part if exists
+    if (parts.length > 1) {
+      const codeContent = parts[1].split('```')[0].trim();
+      if (!lessonBlocks.value.some(block => block.type === 'code')) {
+        addCodeBlock();
+      }
+      const lastCodeBlockIndex = [...lessonBlocks.value].reverse().findIndex(block => block.type === 'code');
+      const codeIndex = lessonBlocks.value.length - 1 - lastCodeBlockIndex;
+      
+      // Set the description in the code block
+      lessonBlocks.value[codeIndex].description = description;
+      
+      nextTick(() => {
+        initMonacoEditor(codeIndex, codeContent);
+      });
+    }
+    
+    showInputField.value = false;
+    aiInput.value = '';
+  } catch (error) {
+    console.error('Error generating AI content:', error);
+    alert('Nem sikerült generálni a tartalmat. Kérlek próbáld újra.');
+  } finally {
+    isGenerating.value = false;
+  }
 };
 
 // Load lecture data if ID is present
@@ -383,10 +463,61 @@ onUnmounted(() => {
 
 .ai-input {
   width: 100%;
-  padding: 10px;
+  padding: 15px;
   border: 1px solid #ccc;
   border-radius: 4px;
+  font-size: 16px;
+  margin-bottom: 10px;
+  min-height: 60px;
+  resize: vertical;
+}
+
+.generate-btn {
+  width: 100%;
+  padding: 10px;
+  background-color: #007bff;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
   font-size: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.generate-btn:disabled {
+  background-color: #0056b3;
+  cursor: not-allowed;
+}
+
+.generate-btn:hover:not(:disabled) {
+  background-color: #0056b3;
+}
+
+.loading {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.loading svg {
+  width: 20px;
+  height: 20px;
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.animate-spin {
+  animation: spin 1s linear infinite;
 }
 
 .code-block {
@@ -424,5 +555,25 @@ onUnmounted(() => {
   display: flex;
   align-items: center;
   gap: 8px;
+}
+
+.highlight-block {
+  background-color: #fff3cd;
+  border-left: 8px solid #ffc107;
+  padding: 15px;
+  margin-bottom: 15px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+}
+
+.highlight-textarea {
+  width: 100%;
+  min-height: 80px;
+  padding: 10px;
+  border: 1px solid #ffc107;
+  border-radius: 4px;
+  resize: vertical;
+  background-color: transparent;
+  font-size: 16px;
+  color: #856404;
 }
 </style>

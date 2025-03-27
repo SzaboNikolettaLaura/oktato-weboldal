@@ -16,22 +16,37 @@
       </li>
 
       <li v-if="isLoggedIn"><NuxtLink to="/course">Lecke</NuxtLink></li>
-      <li v-if="isLoggedIn"><NuxtLink to="/messages">Üzenetek</NuxtLink></li>
+      <li v-if="isLoggedIn">
+        <span class="nav-link" @click="toggleNotifications">
+          Értesítések
+          <span v-if="unreadCount" class="notification-badge">{{ unreadCount }}</span>
+        </span>
+      </li>
       <li v-if="isLoggedIn && userData.role !== 'diak'"><NuxtLink to="/students">Diákok</NuxtLink></li>
       <li v-if="isLoggedIn">
         <span class="login-text" @click="logout">Kijelentkezés</span>
       </li>
     </ul>
+
+    <NotificationPopup 
+      v-if="isLoggedIn"
+      :is-visible="showNotifications"
+      @close="showNotifications = false"
+    />
   </nav>
 </template>
 
 <script setup>
 import { ref, computed, onMounted } from 'vue';
+import useUserData from '~/composables/useUserData';
+
 const { userData, logout: logoutUser } = useUserData();
 
 const isLoggedIn = ref(false);
 const menuVisible = ref(false);
 const isMobile = ref(false);
+const showNotifications = ref(false);
+const unreadCount = ref(0);
 
 const checkLoginStatus = () => {
   isLoggedIn.value = userData.value.role !== 'guest';
@@ -45,6 +60,10 @@ const logout = () => {
 
 const toggleMenu = () => {
   menuVisible.value = !menuVisible.value;
+};
+
+const toggleNotifications = () => {
+  showNotifications.value = !showNotifications.value;
 };
 
 const checkMobile = () => {
@@ -186,5 +205,45 @@ onMounted(() => {
   .menu-icon.open .hamburger:after {
     transform: translateY(-10px) rotate(90deg);
   }
+}
+
+.notification-icon {
+  position: relative;
+  cursor: pointer;
+  font-size: 20px;
+  color: #ECF0F1;
+}
+
+.notification-badge {
+  position: absolute;
+  top: -8px;
+  right: -8px;
+  background: #c00;
+  color: white;
+  border-radius: 50%;
+  padding: 2px 6px;
+  font-size: 12px;
+  min-width: 18px;
+  text-align: center;
+}
+
+@media (max-width: 768px) {
+  .notification-icon {
+    display: block;
+    text-align: center;
+    padding: 15px 0;
+  }
+}
+
+.nav-link {
+  text-decoration: none;
+  color: #ECF0F1;
+  font-weight: bold;
+  cursor: pointer;
+  position: relative;
+}
+
+.nav-link:hover {
+  color: #FFFFFF;
 }
 </style>

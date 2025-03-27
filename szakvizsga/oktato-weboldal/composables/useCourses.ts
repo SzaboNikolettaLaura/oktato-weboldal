@@ -18,10 +18,14 @@ export type ICourse = {
     lectures: ILecture[]
 }
 
-const useCourses = async () => {
+const useCourses = async (token: string) => {
     const init = async (): Promise<ICourse[]> => {
         try {
-            const courses = await axios<ICourse[]>('/api/courses')
+            const courses = await axios<ICourse[]>('/api/courses', {
+                params: {
+                    token
+                }
+            })
             return courses.data;
         } catch(e) {
             return []

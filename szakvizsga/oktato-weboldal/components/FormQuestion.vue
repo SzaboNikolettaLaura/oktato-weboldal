@@ -25,11 +25,11 @@
         <div v-for="(option, optionIndex) in question.options" :key="optionIndex" class="option-container">
           <input
             v-model="option.isCorrect"
-            :type="question.type === 'multiple-choice' ? 'radio' : 'checkbox'"
+            :type="question.type === 'multiple-choice' ? 'checkbox' : 'radio'"
             :name="'question' + index"
             :value="true"
             class="correct-option"
-            :disabled="question.type === 'multiple-choice' && option.isCorrect && question.options.filter(opt => opt.isCorrect).length >= 1"
+            :disabled="question.type === 'checkbox' && option.isCorrect && question.options.filter(opt => opt.isCorrect).length >= 1"
             @change="handleCorrectOptionChange(optionIndex)"
           />
           <input
@@ -48,14 +48,23 @@
     props: ['question', 'index', 'removeQuestion'],
     methods: {
       handleQuestionTypeChange() {
-        if (this.question.type !== 'multiple-choice' && this.question.type !== 'checkbox') {
+        if (this.question.type === 'multiple-choice' || this.question.type === 'checkbox') {
+          // Add 4 default options if none exist
+          if (!this.question.options || this.question.options.length === 0) {
+            this.question.options = [
+              { text: 'Válaszlehetőség A', isCorrect: false },
+              { text: 'Válaszlehetőség B', isCorrect: false },
+              { text: 'Válaszlehetőség C', isCorrect: false },
+              { text: 'Válaszlehetőség D', isCorrect: false }
+            ];
+          }
+        } else {
           this.question.options = [];
         }
       },
       handleCorrectOptionChange(selectedIndex) {
-        // If multiple-choice, ensure only one answer is correct
-        if (this.question.type === 'multiple-choice') {
-          // Uncheck all other options before marking the selected one as correct
+        // If checkbox type, ensure only one answer is correct
+        if (this.question.type === 'checkbox') {
           this.question.options.forEach((option, index) => {
             if (index !== selectedIndex) {
               option.isCorrect = false;
@@ -80,13 +89,25 @@
   }
   
   .question-header {
+    cursor: grab;
     display: flex;
     justify-content: space-between;
     align-items: center;
+    padding: 10px;
+    background: #f8f9fa;
+    border-radius: 4px;
+    user-select: none;
+    margin-bottom: 15px;
+  }
+  
+  .question-header:active {
+    cursor: grabbing;
   }
   
   .question-header h3 {
     margin: 0;
+    color: #666;
+    font-size: 14px;
   }
   
   .question-header-container {
@@ -126,8 +147,14 @@
   .remove-question {
     background-color: transparent;
     border: none;
-    padding: 0;
+    padding: 5px;
     cursor: pointer;
+    opacity: 0.7;
+    transition: opacity 0.2s;
+  }
+  
+  .remove-question:hover {
+    opacity: 1;
   }
   
   .delete-icon {

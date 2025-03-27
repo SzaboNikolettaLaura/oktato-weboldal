@@ -12,9 +12,9 @@ export default defineEventHandler(async (event) => {
     }
     // Proceed with inserting the lecture data into the database
     const [courseResult, __] = await event.context.$mysql.query(`
-      INSERT INTO courses (title)
-      VALUES (?)
-    `, [title]);
+      INSERT INTO courses (title, teacher_id)
+      VALUES (?, ?)
+    `, [title, user.id]);
 
     // Return a success response
     return { message: 'Course added successfully!' };

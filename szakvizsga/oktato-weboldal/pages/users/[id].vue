@@ -5,9 +5,9 @@
       <div class="sidebar">
         <div class="sidebar-content">
           <img :src="user.image" alt="Profile Picture" class="profile-image" />
-          <button v-if="userData.id === user.id && !editing" class="edit-btn" @click="toggleEditing">Szerkesztés</button>
-          <button v-if="userData.id === user.id && editing" class="save-btn" @click="save">Mentés</button>
-          <button v-if="userData.id === user.id" class="delete-btn">Törlés</button>
+          <button v-if="!editing" class="edit-btn" @click="toggleEditing">Szerkesztés</button>
+          <button v-if="editing" class="save-btn" @click="save">Mentés</button>
+          <button class="delete-btn">Törlés</button>
         </div>
       </div>
 
@@ -29,7 +29,7 @@
             <input v-model="user.email" type="email" :disabled="!editing" />
           </div>
         </div>
-        <div class="form-row" v-if="user.role === 'diak'">
+        <div class="form-row" v-if="user.role === 'diak' && userData.role !== 'tanar'">
           <div class="form-group">
             <label>Szak</label>
             <select v-model="profile.specialization" :disabled="!editing">
@@ -193,3 +193,4 @@ input, select {
   }
 }
 </style>
+

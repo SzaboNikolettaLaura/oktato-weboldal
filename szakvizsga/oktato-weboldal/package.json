@@ -12,10 +12,12 @@
   "dependencies": {
     "@google/generative-ai": "^0.24.0",
     "@tailwindcss/vite": "^4.0.12",
+    "@vueup/vue-quill": "^1.2.0",
     "axios": "^1.8.1",
     "bcrypt": "^5.1.1",
     "jsonwebtoken": "^9.0.2",
     "jwt-decode": "^4.0.0",
+    "marked": "^15.0.12",
     "monaco-editor": "^0.52.2",
     "mysql2": "^3.11.5",
     "nuxt": "^3.14.1592",

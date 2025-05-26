@@ -224,83 +224,143 @@ async function toggleCourseVisibility(course) {
 <style scoped>
 .container {
   display: flex;
+  min-height: calc(100vh - 64px);
+  background-color: #f8fafc;
 }
 
 .sidebar {
-  width: 250px;
-  background-color: #f4f4f4;
-  padding: 20px;
-  height: 100vh;
+  width: 300px;
+  background-color: #e2e8f0;
+  padding: 24px;
+  height: calc(100vh - 64px);
   overflow-y: auto;
+  box-shadow: 2px 0 8px rgba(0, 0, 0, 0.05);
+  border-right: 1px solid #e2e8f0;
 }
 
 .sidebar-title {
-  font-size: 24px;
+  font-size: 28px;
+  color: #09122C;
+  font-weight: 700;
+  margin-bottom: 20px;
+  padding-bottom: 10px;
+  border-bottom: 2px solid #872341;
 }
 
-.sidebar-content ul {
-  list-style-type: none;
-  padding: 0;
-  margin: 0;
+.sidebar-content {
+  padding: 8px 0;
 }
 
-.sidebar-content ul li {
-  padding: 10px 0;
-  cursor: pointer;
+.sidebar-content ol li {
+  padding: 12px 16px;
+  margin: 4px 0;
+  border-radius: 8px;
+  transition: all 0.2s;
+  font-size: 16px;
+  color: #1f5f5f;
+}
+
+.sidebar-content ol li:hover {
+  background-color: #f1f5f9;
+  color: #BE3144;
+}
+
+.sidebar-content ol li.active {
+  color: #BE3144;
+  border-left: 3px solid #BE3144;
 }
 
 .main {
   flex: 1;
-  padding: 20px;
+  padding: 32px;
+  max-width: 1200px;
+  margin: 0 auto;
+  background-color: #ffffff;
 }
 
 .main h1 {
-  font-size: 32px;
+  font-size: 36px;
+  color: #09122C;
+  font-weight: 700;
+  margin-bottom: 30px;
+  padding-bottom: 15px;
+  border-bottom: 2px solid #872341;
+}
+
+.main h2 {
+  font-size: 24px;
+  color: #09122C;
+  font-weight: 600;
+  margin: 25px 0 15px 0;
 }
 
 .exercise-box {
-  border: 1px solid #ddd;
-  padding: 10px;
-  margin-top: 20px;
-  background-color: #f9f9f9;
+  border: 1px solid #e2e8f0;
+  padding: 24px;
+  margin: 24px 0;
+  background-color: #f8fafc;
+  border-radius: 12px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
 }
 
-.modal {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background-color: rgba(0, 0, 0, 0.5);
+.show-courses {
   display: flex;
   justify-content: center;
   align-items: center;
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background-color: #09122C;
+  color: #E17564;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  transition: all 0.2s;
 }
 
-.modal-content {
-  background-color: white;
-  padding: 20px;
-  border-radius: 5px;
-  max-width: 400px;
-  width: 100%;
+.show-courses:hover {
+  transform: scale(1.05);
+  background-color: #872341;
+  box-shadow: 0 6px 8px rgba(0,0,0,0.15);
 }
 
-.modal-actions {
-  margin-top: 20px;
-  display: flex;
-  justify-content: space-between;
-}
-
-.exercise-box button {
-  background-color: #4CAF50;
+.add-lesson-btn {
+  background-color: #BE3144;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
   color: white;
-  padding: 10px 15px;
-  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 24px;
   cursor: pointer;
+  transition: all 0.2s;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
 }
 
-.exercise-box button:hover {
-  background-color: #45a049;
+.add-lesson-btn:hover {
+  background-color: #E17564;
+  transform: scale(1.05);
+}
+
+.visibility-on, .visibility-off {
+  padding: 6px;
+  border-radius: 6px;
+  transition: all 0.2s;
+}
+
+.visibility-on {
+  color: #BE3144;
+}
+
+.visibility-off {
+  color: #872341;
+}
+
+.visibility-on:hover, .visibility-off:hover {
+  background-color: #f1f5f9;
 }
 
 ol {
@@ -311,12 +371,15 @@ ol {
 
 ol li {
   counter-increment: item;
-  margin-bottom: 0.5em;
+  margin-bottom: 0.8em;
+  font-size: 16px;
 }
 
 ol li:before {
   content: counters(item, ".") ".";
-  margin-right: 0.5em;
+  margin-right: 0.8em;
+  color: #1f5f5f;
+  font-weight: 600;
 }
 
 ol li ol {
@@ -324,49 +387,27 @@ ol li ol {
   padding-left: 2em;
 }
 
-.show-courses {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  position: fixed;
-  bottom: 0;
-  right: 0;
-  margin: 16px;
-  width: 42px;
-  height: 42px;
-  border-radius: 50%;
-  padding: 8px;
-  background-color: #09122C;
-  color: white;
-}
-
-.add-lesson-btn {
-  background-color: #4CAF50;
-  padding: 10px;
-  border-radius: 50%;
-  color: white;
-  text-align: center;
-  font-size: 24px;
-  cursor: pointer;
-}
-
 @media (max-width: 768px) {
   .sidebar {
-    position: absolute;
+    position: fixed;
     left: 0;
-    top:  0;
+    top: 64px;
     bottom: 0;
-    transition: transform 0.3s ease-in;
+    z-index: 40;
+    transform: translateX(0);
+    transition: transform 0.3s ease;
   }
 
   .sidebar.closed {
     transform: translateX(-100%);
   }
 
-  .show-courses {
-    display: flex;
-    justify-content: center;
-    align-items: center;
+  .main {
+    padding: 24px 16px;
+  }
+
+  .main h1 {
+    font-size: 28px;
   }
 }
 </style>

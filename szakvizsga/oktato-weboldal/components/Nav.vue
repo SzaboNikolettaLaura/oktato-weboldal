@@ -11,6 +11,9 @@
     </div>
 
     <ul class="nav-links" :class="{ 'show-menu': menuVisible }">
+      <li v-if="isMobile" class="close-button">
+        <span class="close-icon" @click="toggleMenu">×</span>
+      </li>
       <li v-if="!isLoggedIn">
         <NuxtLink to="/login" class="login-text">Bejelentkezés</NuxtLink>
       </li>
@@ -22,6 +25,7 @@
           <span v-if="unreadCount" class="notification-badge">{{ unreadCount }}</span>
         </span>
       </li>
+      <li v-if="isLoggedIn"><NuxtLink :to="`/users/${userData.id}`">Profil</NuxtLink></li>
       <li v-if="isLoggedIn && userData.role !== 'diak'"><NuxtLink to="/students">Diákok</NuxtLink></li>
       <li v-if="isLoggedIn">
         <span class="login-text" @click="logout">Kijelentkezés</span>
@@ -60,6 +64,11 @@ const logout = () => {
 
 const toggleMenu = () => {
   menuVisible.value = !menuVisible.value;
+  if (menuVisible.value) {
+    document.body.classList.add('menu-open');
+  } else {
+    document.body.classList.remove('menu-open');
+  }
 };
 
 const toggleNotifications = () => {
@@ -137,10 +146,10 @@ onMounted(() => {
     gap: 0;
     padding: 10px 20px;
     position: fixed;
-    top: 5rem;
+    top: 0;
     left: 0;
     width: 100%;
-    height: 100%;
+    height: 100vh;
     background-color: #09122C;
     z-index: 1000;
     box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
@@ -149,6 +158,7 @@ onMounted(() => {
 
   .nav-links.show-menu {
     display: flex;
+    margin-top: 0;
   }
 
   .nav-links li {
@@ -157,6 +167,7 @@ onMounted(() => {
     width: 100%;
     padding: 15px 0;
     border-bottom: 1px solid #ddd;
+    margin-top: 15px;
   }
 
   .menu-icon {
@@ -204,6 +215,27 @@ onMounted(() => {
 
   .menu-icon.open .hamburger:after {
     transform: translateY(-10px) rotate(90deg);
+  }
+
+  body.menu-open {
+    overflow: hidden;
+  }
+
+  .close-button {
+    text-align: right;
+    padding: 20px;
+    border-bottom: none !important;
+  }
+
+  .close-icon {
+    font-size: 32px;
+    color: #ECF0F1;
+    cursor: pointer;
+    line-height: 1;
+  }
+
+  .close-icon:hover {
+    color: #FFFFFF;
   }
 }
 

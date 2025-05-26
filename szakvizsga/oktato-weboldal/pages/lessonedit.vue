@@ -1,7 +1,35 @@
 <template>
   <div class="lesson-editor">
     <Nav />
-    <div class="action-bar" :class="{ pinned: isPinned }" :style="{ top: isPinned && !isNavbarVisible ? '0' : isPinned ? `${navbarHeight}px` : '0', marginTop: isNavbarVisible && !isPinned ? '15px' : '0' }">
+    <div class="tabs-container">
+      <div class="tabs-header">
+        <div class="course-selector">
+          <select v-model="course" class="filter-input" @change="loadLessons">
+            <option value="" selected="selected">Kurzus</option>
+            <option v-bind:value="c.id" v-for="c of courseData" v-bind:key="c.id">{{ c.title }}</option>
+          </select>
+        </div>
+        <div class="editor-type-selector">
+          <select v-model="defaultEditorType" class="editor-type-select" @change="handleEditorTypeChange">
+            <option value="plain">Egyszerű szöveg</option>
+            <option value="markdown">Markdown</option>
+            <option value="rich">Rich Editor</option>
+          </select>
+        </div>
+        <div class="tabs-list">
+          <div v-for="lesson in courseLessons" 
+               :key="lesson.id" 
+               class="tab"
+               :class="{ 'active': (currentLessonId === lesson.id) || (Number(route.query.id) === lesson.id) }"
+               @click="() => { navigateTo(`/lessonedit?id=${lesson.id}`); loadLesson(lesson.id); }">
+            <span class="tab-title">{{ lesson.title || 'Új lecke' }}</span>
+            <button v-if="lesson.isNew" class="close-tab" @click.stop="closeTab(lesson.id)">&times;</button>
+          </div>
+          <button class="add-tab-btn" @click="createNewLesson">+</button>
+        </div>
+      </div>
+    </div>
+    <div class="action-bar" :class="{ pinned: isPinned }" :style="{ top: isPinned && !isNavbarVisible ? '0' : isPinned ? `${navbarHeight}px` : '0', marginTop: isNavbarVisible && !isPinned ? '0px' : '15px' }">
       <div class="action-bar-left">
         <button class="pin-button" @click="togglePin">
           <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -11,22 +39,29 @@
           {{ isPinned ? 'Unpin' : 'Pin' }}
         </button>
         <div>
-          <span>Kurzus: </span>
-          <select v-model="course" class="filter-input">
-            <option value="" selected="selected">Kurzus</option>
-            <option v-bind:value="c.id" v-for="c of courseData" v-bind:key="c.id">{{ c.title }}</option>
-          </select>
-        </div>
-        <div>
           <span>Cím: </span>
           <input type="text" v-model="lectureTitle" class="filter-input">
         </div>
       </div>
       <div class="action-bar-right">
-        <button @click="addTextBlock" class="action-btn">Szöveg+</button>
-        <button @click="addCodeBlock" class="action-btn">Kód+</button>
-        <button @click="addHighlightBlock" class="action-btn">Kiemelés+</button>
-        <button @click="addTestBlock" class="action-btn">Teszt+</button>
+        <input type="file" ref="fileInput" accept=".md,.txt,.js" class="file-input" @change="handleFileUpload" style="display: none">
+        <button @click="$refs.fileInput.click()" class="action-btn" :disabled="isUploading">
+          <span v-if="!isUploading">Fájl feltöltés</span>
+          <span v-else class="loading">
+            <svg class="animate-spin" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+              <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+            Feltöltés...
+          </span>
+        </button>
+        <template v-if="defaultEditorType !== 'rich'">
+          <button v-if="defaultEditorType !== 'markdown'" @click="addTextBlock" class="action-btn">Szöveg+</button>
+          <button v-if="defaultEditorType !== 'markdown'" @click="addCodeBlock" class="action-btn">Kód+</button>
+          <button v-if="defaultEditorType !== 'markdown'" @click="addHighlightBlock" class="action-btn">Kiemelés+</button>
+          <button v-if="defaultEditorType !== 'markdown'" @click="addTestBlock" class="action-btn">Teszt+</button>
+          <button v-if="defaultEditorType !== 'markdown'" @click="addTableBlock" class="action-btn">Táblázat+</button>
+        </template>
         <button @click="toggleVisibility" class="action-btn" :class="{ 'visibility-on': visibility, 'visibility-off': !visibility }">
           <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <path v-if="visibility" d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
@@ -39,9 +74,45 @@
       </div>
     </div>
 
-    <div class="editor-container">
-      <div class="controls"></div>
+    <div class="editor-container" :class="{ 'full-page': defaultEditorType === 'markdown' || defaultEditorType === 'rich' }">
+      <div v-if="defaultEditorType === 'markdown'" class="markdown-editor">
+        <div class="markdown-input">
+          <textarea v-model="markdownContent" placeholder="Írd ide a markdown szöveget..." class="block-textarea" />
+        </div>
+        <div class="markdown-preview" v-html="renderMarkdown(markdownContent)"></div>
+      </div>
+      <div v-else-if="defaultEditorType === 'rich'" class="rich-editor">
+        <div class="rich-editor-input">
+          <QuillEditor
+            v-model:content="richContent"
+            contentType="html"
+            theme="snow"
+            toolbar="full"
+            :options="{
+              modules: {
+                toolbar: [
+                  ['bold', 'italic', 'underline', 'strike'],
+                  ['blockquote', 'code-block'],
+                  [{ 'header': 1 }, { 'header': 2 }],
+                  [{ 'list': 'ordered'}, { 'list': 'bullet' }],
+                  [{ 'script': 'sub'}, { 'script': 'super' }],
+                  [{ 'indent': '-1'}, { 'indent': '+1' }],
+                  [{ 'direction': 'rtl' }],
+                  [{ 'size': ['small', false, 'large', 'huge'] }],
+                  [{ 'header': [1, 2, 3, 4, 5, 6, false] }],
+                  [{ 'color': [] }, { 'background': [] }],
+                  [{ 'font': [] }],
+                  [{ 'align': [] }],
+                  ['clean'],
+                  ['link', 'image', 'video']
+                ]
+              }
+            }"
+          />
+        </div>
+      </div>
       <draggable 
+        v-else
         v-model="lessonBlocks" 
         class="blocks"
         item-key="id"
@@ -58,9 +129,52 @@
             <div v-if="block.type === 'text'">
               <div class="block-header">
                 <span class="block-label">Szöveg Blokk</span>
-                <button @click="removeBlock(index)" class="btn btn-danger">Törlés</button>
+                <div class="block-actions">
+                  <select v-model="block.editorType" class="editor-select">
+                    <option value="plain">Egyszerű szöveg</option>
+                    <option value="markdown">Markdown</option>
+                    <option value="rich">Rich Editor</option>
+                  </select>
+                  <button @click="removeBlock(index)" class="btn btn-danger">Törlés</button>
+                </div>
               </div>
-              <textarea v-model="block.content" placeholder="Írd ide a magyarázatot..." class="block-textarea" />
+              <div v-if="block.editorType === 'plain'" class="block-textarea">
+                <textarea v-model="block.content" placeholder="Írd ide a magyarázatot..." />
+              </div>
+              <div v-else-if="block.editorType === 'markdown'" class="markdown-editor">
+                <div class="markdown-input">
+                  <textarea v-model="block.content" placeholder="Írd ide a markdown szöveget..." class="block-textarea" />
+                </div>
+                <div class="markdown-preview" v-html="renderMarkdown(block.content)"></div>
+              </div>
+              <div v-else-if="block.editorType === 'rich'" class="rich-editor">
+                <QuillEditor
+                  v-model:content="block.content"
+                  contentType="html"
+                  theme="snow"
+                  toolbar="full"
+                  :options="{
+                    modules: {
+                      toolbar: [
+                        ['bold', 'italic', 'underline', 'strike'],
+                        ['blockquote', 'code-block'],
+                        [{ 'header': 1 }, { 'header': 2 }],
+                        [{ 'list': 'ordered'}, { 'list': 'bullet' }],
+                        [{ 'script': 'sub'}, { 'script': 'super' }],
+                        [{ 'indent': '-1'}, { 'indent': '+1' }],
+                        [{ 'direction': 'rtl' }],
+                        [{ 'size': ['small', false, 'large', 'huge'] }],
+                        [{ 'header': [1, 2, 3, 4, 5, 6, false] }],
+                        [{ 'color': [] }, { 'background': [] }],
+                        [{ 'font': [] }],
+                        [{ 'align': [] }],
+                        ['clean'],
+                        ['link', 'image', 'video']
+                      ]
+                    }
+                  }"
+                />
+              </div>
             </div>
             <div v-else-if="block.type === 'code'" class="code-block">
               <div class="block-header">
@@ -86,6 +200,25 @@
                 </div>
               </div>
               <p>{{ block.title }}</p>
+            </div>
+            <div v-else-if="block.type === 'table'" class="table-block">
+              <div class="block-header">
+                <span class="block-label">Táblázat Blokk</span>
+                <button @click="removeBlock(index)" class="btn btn-danger">Törlés</button>
+              </div>
+              <div class="table-controls">
+                <button @click="addTableRow(block)" class="btn btn-secondary">Sor+</button>
+                <button @click="addTableColumn(block)" class="btn btn-secondary">Oszlop+</button>
+              </div>
+              <div class="table-container">
+                <table class="lesson-table">
+                  <tr v-for="(row, rowIndex) in block.rows" :key="rowIndex">
+                    <td v-for="(cell, colIndex) in row" :key="colIndex">
+                      <textarea v-model="block.rows[rowIndex][colIndex]" class="table-cell"></textarea>
+                    </td>
+                  </tr>
+                </table>
+              </div>
             </div>
           </div>
         </template>
@@ -118,17 +251,20 @@
 </template>
 
 <script setup>
-import { ref, onMounted, onUnmounted, nextTick } from 'vue';
+import { ref, onMounted, onUnmounted, nextTick, watch } from 'vue';
 import Nav from '@/components/Nav.vue';
 import axios from 'axios';
 import TestBlockEditor from '@/components/TestBlockEditor.vue';
 import { useRoute } from 'vue-router';
 import * as monaco from 'monaco-editor';
 import draggable from 'vuedraggable';
+import { marked } from 'marked';
+import { QuillEditor } from '@vueup/vue-quill';
+import '@vueup/vue-quill/dist/vue-quill.snow.css';
 
 const route = useRoute();
 const { userData } = useUserData();
-const { courseData } = await useCourses();
+const { courseData } = await useCourses(userData.value.token);
 const lessonBlocks = ref([]);
 const visibility = ref(true);
 const course = ref('');
@@ -143,6 +279,29 @@ const isPinned = ref(false);
 const lastScrollY = ref(0);
 const navbarHeight = ref(60);
 const isNavbarVisible = ref(true);
+const fileInput = ref(null);
+const isUploading = ref(false);
+const showLessonsTab = ref(false);
+const courseLessons = ref([]);
+const currentLessonId = ref(null);
+const defaultEditorType = ref('plain');
+const markdownContent = ref('');
+const richContent = ref('');
+
+watch(course, (newCourse) => {
+  if (newCourse) {
+    const selectedCourse = courseData.value.find(c => c.id === newCourse);
+    if (selectedCourse) {
+      courseLessons.value = selectedCourse.lectures.map(lecture => ({
+        id: lecture.id,
+        title: lecture.title,
+        visible: lecture.visible.data[0]
+      }));
+    }
+  } else {
+    courseLessons.value = [];
+  }
+});
 
 const autoExpandInput = (event) => {
   event.target.style.height = 'auto';
@@ -190,6 +349,7 @@ const addTextBlock = () => {
   lessonBlocks.value.push({ 
     type: 'text', 
     content: '',
+    editorType: defaultEditorType.value,
     id: Date.now() + Math.random()
   });
 };
@@ -224,6 +384,23 @@ const addTestBlock = () => {
   });
 };
 
+const addTableBlock = () => {
+  lessonBlocks.value.push({
+    type: 'table',
+    rows: [['', ''], ['', '']],
+    id: Date.now() + Math.random()
+  });
+};
+
+const addTableRow = (block) => {
+  const newRow = Array(block.rows[0].length).fill('');
+  block.rows.push(newRow);
+};
+
+const addTableColumn = (block) => {
+  block.rows.forEach(row => row.push(''));
+};
+
 const removeBlock = (index) => {
   if (lessonBlocks.value[index].type === 'code' && editors[index]) {
     editors[index].dispose();
@@ -238,11 +415,20 @@ const toggleVisibility = () => {
 
 const saveLesson = () => {
   // Update content from editors before saving
-  lessonBlocks.value.forEach((block, index) => {
-    if (block.type === 'code' && editors[index]) {
-      block.content = editors[index].getValue();
-    }
-  });
+  if (defaultEditorType.value === 'markdown') {
+    lessonBlocks.value = [{
+      type: 'text',
+      content: markdownContent.value,
+      editorType: 'markdown',
+      id: Date.now() + Math.random()
+    }];
+  } else {
+    lessonBlocks.value.forEach((block, index) => {
+      if (block.type === 'code' && editors[index]) {
+        block.content = editors[index].getValue();
+      }
+    });
+  }
   const lectureId = route.query.id;
   const method = lectureId ? 'patch' : 'post';
   const url = lectureId ? `/api/lectures?id=${lectureId}` : '/api/lectures';
@@ -376,6 +562,256 @@ const togglePin = () => {
   isPinned.value = !isPinned.value;
 };
 
+const handleFileUpload = (event) => {
+  const file = event.target.files[0];
+  if (!file) return;
+
+  isUploading.value = true;
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    const content = e.target.result;
+    const lectures = parseMarkdownContent(content);
+    
+    if (lectures.length > 0) {
+      lectures.forEach(lecture => {
+        const newTab = {
+          id: Date.now() + Math.random(),
+          title: lecture.title || 'Új lecke',
+          visible: true,
+          isNew: true,
+          blocks: lecture.blocks
+        };
+        courseLessons.value.push(newTab);
+      });
+      
+      if (lectures[0].blocks.length > 0) {
+        lessonBlocks.value = lectures[0].blocks;
+        lectureTitle.value = lectures[0].title;
+      }
+    }
+  };
+  reader.onerror = () => {
+    alert('Hiba történt a fájl feltöltése során.');
+  };
+  reader.onloadend = () => {
+    isUploading.value = false;
+  };
+  reader.readAsText(file);
+};
+
+const parseMarkdownContent = (content) => {
+  const lectures = [];
+  let currentLecture = {
+    title: '',
+    blocks: []
+  };
+  let currentBlock = null;
+  let currentContent = [];
+  let inTable = false;
+  let tableContent = [];
+
+  const lines = content.split('\n');
+  
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    
+    if (line.startsWith('# ')) {
+      if (currentLecture.blocks.length > 0) {
+        lectures.push(currentLecture);
+      }
+      currentLecture = {
+        title: line.slice(2).trim(),
+        blocks: []
+      };
+      continue;
+    }
+    
+    if (line.includes('|')) {
+      if (!inTable) {
+        inTable = true;
+        tableContent = [];
+      }
+      tableContent.push(line);
+      continue;
+    } else if (inTable) {
+      inTable = false;
+      currentBlock = {
+        type: 'text',
+        content: tableContent.join('\n')
+      };
+      currentLecture.blocks.push(currentBlock);
+      currentBlock = null;
+    }
+    
+    if (line.startsWith('```')) {
+      if (currentBlock) {
+        currentLecture.blocks.push({
+          type: currentBlock.type,
+          content: currentContent.join('\n').trim(),
+          description: currentBlock.description || '',
+          id: Date.now() + Math.random()
+        });
+        currentContent = [];
+      }
+      const description = line.slice(3).trim();
+      currentBlock = {
+        type: 'code',
+        description: description
+      };
+    } else if (line.startsWith('>')) {
+      if (currentBlock) {
+        currentLecture.blocks.push({
+          type: currentBlock.type,
+          content: currentContent.join('\n').trim(),
+          description: currentBlock.description || '',
+          id: Date.now() + Math.random()
+        });
+        currentContent = [];
+      }
+      currentBlock = {
+        type: 'highlight'
+      };
+      currentContent.push(line.slice(1).trim());
+    } else if (line.trim() === '') {
+      if (currentBlock && currentContent.length > 0) {
+        currentLecture.blocks.push({
+          type: currentBlock.type,
+          content: currentContent.join('\n').trim(),
+          description: currentBlock.description || '',
+          id: Date.now() + Math.random()
+        });
+        currentContent = [];
+        currentBlock = null;
+      }
+    } else {
+      if (!currentBlock) {
+        currentBlock = {
+          type: 'text'
+        };
+      }
+      currentContent.push(line);
+    }
+  }
+
+  if (currentBlock && currentContent.length > 0) {
+    currentLecture.blocks.push({
+      type: currentBlock.type,
+      content: currentContent.join('\n').trim(),
+      description: currentBlock.description || '',
+      id: Date.now() + Math.random()
+    });
+  }
+
+  if (currentLecture.blocks.length > 0) {
+    lectures.push(currentLecture);
+  }
+
+  return lectures;
+};
+
+const loadLessons = async () => {
+  if (!course.value) {
+    courseLessons.value = [];
+    return;
+  }
+
+  const selectedCourse = courseData.value.find(c => c.id === course.value);
+  if (selectedCourse) {
+    courseLessons.value = selectedCourse.lectures.map(lecture => ({
+      id: lecture.id,
+      title: lecture.title,
+      visible: lecture.visible.data[0]
+    }));
+  }
+};
+
+const createNewLesson = () => {
+  lessonBlocks.value = [];
+  lectureTitle.value = '';
+  visibility.value = true;
+  currentLessonId.value = null;
+  
+  // Add new tab
+  const newTab = {
+    id: Date.now(),
+    title: 'Új lecke',
+    visible: true,
+    isNew: true
+  };
+  courseLessons.value.push(newTab);
+  
+  // Navigate to the new lesson
+  navigateTo(`/lessonedit?id=${newTab.id}`);
+};
+
+const closeTab = (lessonId) => {
+  if (currentLessonId.value === lessonId) {
+    createNewLesson();
+  }
+  courseLessons.value = courseLessons.value.filter(l => l.id !== lessonId);
+};
+
+const loadLesson = async (lessonId) => {
+  currentLessonId.value = lessonId;
+  try {
+    const response = await axios.get(`/api/lectures?id=${lessonId}`);
+    const lecture = response.data;
+    course.value = lecture.courseId;
+    lectureTitle.value = lecture.title;
+    visibility.value = lecture.visible.data[0];
+    
+    if (defaultEditorType.value === 'markdown') {
+      const markdownBlock = lecture.blocks.find(block => block.type === 'text' && block.editorType === 'markdown');
+      markdownContent.value = markdownBlock ? markdownBlock.content : '';
+    } else {
+      lessonBlocks.value = lecture.blocks.map(block => {
+        if (block.type === 'text') {
+          return {
+            ...block,
+            content: block.content.trim()
+          };
+        }
+        return block;
+      });
+
+      nextTick(() => {
+        lessonBlocks.value.forEach((block, index) => {
+          if (block.type === 'code') {
+            initMonacoEditor(index, block.content);
+          }
+        });
+      });
+    }
+  } catch (error) {
+    console.error('Error loading lesson:', error);
+  }
+};
+
+const toggleMarkdown = (index) => {
+  lessonBlocks.value[index].useMarkdown = !lessonBlocks.value[index].useMarkdown;
+};
+
+const renderMarkdown = (content) => {
+  return marked(content);
+};
+
+const addMarkdownBlock = () => {
+  lessonBlocks.value.push({ 
+    type: 'text', 
+    content: '',
+    editorType: 'markdown',
+    id: Date.now() + Math.random()
+  });
+};
+
+const handleEditorTypeChange = () => {
+  if (defaultEditorType.value === 'rich') {
+    nextTick(() => {
+      // Initialize rich editor if needed
+    });
+  }
+};
+
 // Load lecture data if ID is present
 onMounted(async () => {
   const lectureId = route.query.id;
@@ -422,83 +858,217 @@ onUnmounted(() => {
 });
 </script>
 
-<style scoped>
-.lesson-editor {
-  padding: 0;
+<style>
+.editor-select {
+  padding: 6px 12px;
+  border: 1px solid #dee2e6;
+  border-radius: 4px;
   background-color: white;
-  min-height: 100vh;
+  color: #333;
+  font-size: 14px;
 }
 
-.action-bar {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
-  justify-content: space-between;
-  padding: 10px;
-  background-color: #f0f0f0;
-  border-bottom: 1px solid #ccc;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-  position: static;
-  width: 100%;
-  z-index: 90;
-  transition: all 0.3s ease;
+.rich-editor {
+  height: 100%;
+  padding: 20px;
+  background: white;
 }
 
-.action-bar.pinned {
-  position: fixed;
-  width: 100%;
+.rich-editor-input {
+  border: 1px solid #dee2e6;
+  border-radius: 4px;
+  overflow: hidden;
+  height: 100%;
+}
+
+.rich-editor-input :deep(.ql-toolbar) {
+  border-top: none;
+  border-left: none;
+  border-right: none;
+  background: #f8f9fa;
+  padding: 8px;
+}
+
+.rich-editor-input :deep(.ql-container) {
+  border: none;
+  height: calc(100vh - 200px);
+  font-size: 16px;
+}
+
+.rich-editor-input :deep(.ql-editor) {
+  padding: 20px;
+  min-height: 100%;
+}
+
+.rich-editor-preview {
+  position: absolute;
+  top: 100%;
   left: 0;
   right: 0;
-  top: 60px;
-  z-index: 90;
+  background: white;
+  border: 1px solid #dee2e6;
+  border-radius: 4px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  margin-top: 5px;
+  z-index: 1000;
+  min-height: 200px;
 }
 
-.action-bar-left {
+.rich-editor-preview :deep(.ql-toolbar) {
+  border-top: none;
+  border-left: none;
+  border-right: none;
+  background: #f8f9fa;
+}
+
+.rich-editor-preview :deep(.ql-container) {
+  border: none;
+  min-height: 150px;
+}
+
+.tabs-container {
+  background: #f8f9fa;
+  border-bottom: 1px solid #dee2e6;
+  margin-bottom: 0;
+  position: sticky;
+  top: 60px;
+  z-index: 80;
+}
+
+.tabs-header {
   display: flex;
   align-items: center;
+  background: #f8f9fa;
+  padding: 0 10px;
+  height: 50px;
   gap: 15px;
 }
 
-.action-bar-right {
-  display: flex;
-  gap: 10px;
-  flex-wrap: wrap;
+.course-selector {
+  min-width: 200px;
+  margin-right: 15px;
 }
 
-.pin-button {
-  background: none;
-  border: none;
-  cursor: pointer;
-  padding: 5px;
-  color: #666;
-  display: flex;
-  align-items: center;
-  gap: 5px;
-}
-
-.pin-button:hover {
+.course-selector .filter-input {
+  width: 100%;
+  height: 30px;
+  padding: 0 10px;
+  border: 1px solid #dee2e6;
+  border-radius: 4px;
+  background-color: white;
   color: #333;
 }
 
-.action-bar button {
-  padding: 8px;
-  background-color: #007bff;
-  color: white;
-  border: none;
+.editor-type-selector {
+  margin-right: 15px;
+  min-width: 150px;
+  position: relative;
+}
+
+.editor-type-selector .editor-type-select {
+  width: 100%;
+  height: 30px;
+  padding: 0 10px;
+  border: 1px solid #dee2e6;
+  border-radius: 4px;
+  background-color: white;
+  color: #333;
+}
+
+.tabs-list {
+  display: flex;
+  overflow-x: auto;
+  flex: 1;
+  gap: 2px;
+  padding: 5px 0;
+  scrollbar-width: thin;
+  -ms-overflow-style: auto;
+  height: 100%;
+  overflow-y: hidden;
+}
+
+.tabs-list::-webkit-scrollbar {
+  height: 6px;
+}
+
+.tabs-list::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 3px;
+}
+
+.tabs-list::-webkit-scrollbar-thumb {
+  background: #888;
+  border-radius: 3px;
+}
+
+.tabs-list::-webkit-scrollbar-thumb:hover {
+  background: #555;
+}
+
+.tab {
+  display: flex;
+  align-items: center;
+  padding: 16px 20px;
+  background: #e9ecef;
+  border: 1px solid #dee2e6;
+  border-bottom: none;
+  border-radius: 6px 6px 0 0;
   cursor: pointer;
-  border-radius: 5px;
-  font-size: 14px;
+  min-width: 160px;
+  max-width: 250px;
+  gap: 8px;
+  transition: all 0.2s;
+  position: relative;
+  z-index: 1;
   white-space: nowrap;
 }
 
-.editor-container {
-  max-width: 800px;
-  margin: auto;
-  background-color: white;
-  padding: 15px;
-  border-radius: 8px;
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-  margin-top: 20px;
+.tab:hover {
+  background: #f1f3f5;
+}
+
+.tab.active {
+  background: white;
+  z-index: 2;
+}
+
+.tab.active::after {
+  content: '';
+  position: absolute;
+  bottom: -1px;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: #007bff;
+  z-index: 3;
+}
+
+.tab-title {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 14px;
+}
+
+.close-tab {
+  background: none;
+  border: none;
+  color: #666;
+  font-size: 24px;
+  padding: 0 4px;
+  cursor: pointer;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  line-height: 1;
+}
+
+.close-tab:hover {
+  color: #333;
 }
 
 .blocks {
@@ -804,10 +1374,6 @@ onUnmounted(() => {
     position: static;
   }
 
-  .action-bar.pinned {
-    top: 50px;
-  }
-
   .editor-container {
     margin-top: 20px;
   }
@@ -826,5 +1392,302 @@ onUnmounted(() => {
   .monaco-container {
     height: 200px;
   }
+
+  .rich-editor {
+    grid-template-columns: 1fr;
+  }
+}
+
+.lessons-tab {
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  margin-bottom: 20px;
+  overflow: hidden;
+}
+.lessons-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 15px;
+  background: #f8f9fa;
+  border-bottom: 1px solid #dee2e6;
+}
+
+.lessons-header h3 {
+  margin: 0;
+  font-size: 18px;
+  color: #333;
+}
+
+.lessons-list {
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+.lesson-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 15px;
+  border-bottom: 1px solid #dee2e6;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.lesson-item:hover {
+  background-color: #f8f9fa;
+}
+
+.lesson-title {
+  font-size: 14px;
+  color: #333;
+}
+
+.lesson-visibility {
+  font-size: 12px;
+  padding: 4px 8px;
+  border-radius: 4px;
+  background-color: #28a745;
+  color: white;
+}
+
+.lesson-visibility.hidden {
+  background-color: #dc3545;
+}
+
+.add-tab-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px 12px;
+  background: #e9ecef;
+  border: 1px solid #dee2e6;
+  border-bottom: none;
+  border-radius: 6px 6px 0 0;
+  cursor: pointer;
+  min-width: 40px;
+  font-size: 20px;
+  color: #666;
+  transition: all 0.2s;
+}
+
+.add-tab-btn:hover {
+  background: #f1f3f5;
+  color: #333;
+}
+
+.table-block {
+  background-color: #f8f9fa;
+  border: 1px solid #dee2e6;
+  border-radius: 8px;
+  padding: 15px;
+  margin-bottom: 15px;
+}
+
+.table-controls {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.btn-secondary {
+  background-color: #6c757d;
+  color: white;
+  border: none;
+}
+
+.btn-secondary:hover {
+  background-color: #5a6268;
+}
+
+.table-container {
+  overflow-x: auto;
+}
+
+.lesson-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 10px;
+}
+
+.lesson-table td {
+  padding: 0;
+  border: 1px solid #dee2e6;
+}
+
+.table-cell {
+  width: 100%;
+  min-height: 40px;
+  padding: 8px;
+  border: none;
+  resize: none;
+  background: transparent;
+  font-size: 14px;
+}
+
+.table-cell:focus {
+  outline: none;
+  background: white;
+}
+
+.block-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.markdown-editor {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 15px;
+  height: 100%;
+  padding: 20px;
+  background: white;
+}
+
+.markdown-header {
+  grid-column: 1 / -1;
+  display: flex;
+  justify-content: flex-start;
+  padding: 0 20px;
+}
+
+.markdown-input {
+  border: 1px solid #dee2e6;
+  border-radius: 4px;
+  overflow: hidden;
+  height: 100%;
+}
+
+.markdown-input textarea {
+  width: 100%;
+  height: 100%;
+  min-height: unset;
+  padding: 20px;
+  border: none;
+  resize: none;
+  font-family: monospace;
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+.markdown-preview {
+  padding: 20px;
+  border: 1px solid #dee2e6;
+  border-radius: 4px;
+  background: white;
+  overflow-y: auto;
+  height: 100%;
+}
+
+.markdown-preview :deep(h1) {
+  font-size: 1.8em;
+  margin-bottom: 0.5em;
+  color: #2c3e50;
+}
+
+.markdown-preview :deep(h2) {
+  font-size: 1.5em;
+  margin-bottom: 0.5em;
+  color: #2c3e50;
+}
+
+.markdown-preview :deep(h3) {
+  font-size: 1.3em;
+  margin-bottom: 0.5em;
+  color: #2c3e50;
+}
+
+.markdown-preview :deep(p) {
+  margin-bottom: 1em;
+  line-height: 1.6;
+}
+
+.markdown-preview :deep(ul), .markdown-preview :deep(ol) {
+  margin-bottom: 1em;
+  padding-left: 2em;
+}
+
+.markdown-preview :deep(code) {
+  background: #f8f9fa;
+  padding: 0.2em 0.4em;
+  border-radius: 3px;
+  font-family: monospace;
+  font-size: 0.9em;
+}
+
+.markdown-preview :deep(pre) {
+  background: #f8f9fa;
+  padding: 1em;
+  border-radius: 4px;
+  overflow-x: auto;
+  margin-bottom: 1em;
+}
+
+.markdown-preview :deep(pre code) {
+  background: none;
+  padding: 0;
+}
+
+.markdown-preview :deep(blockquote) {
+  border-left: 4px solid #dee2e6;
+  padding-left: 1em;
+  margin-left: 0;
+  color: #6c757d;
+}
+
+.markdown-preview :deep(table) {
+  border-collapse: collapse;
+  width: 100%;
+  margin-bottom: 1em;
+}
+
+.markdown-preview :deep(th), .markdown-preview :deep(td) {
+  border: 1px solid #dee2e6;
+  padding: 0.5em;
+}
+
+.markdown-preview :deep(th) {
+  background: #f8f9fa;
+}
+
+@media (max-width: 768px) {
+  .markdown-editor {
+    grid-template-columns: 1fr;
+  }
+}
+
+.action-bar.hidden {
+  display: none;
+}
+
+.action-bar {
+  display: flex;
+  justify-content: space-between;
+  padding: 10px;
+  background-color: #f0f0f0;
+  border-bottom: 1px solid #ccc;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  position: static;
+  width: 100%;
+  z-index: 90;
+  transition: all 0.3s ease;
+  flex-wrap: nowrap;
+}
+
+.action-bar-left {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  flex-shrink: 0;
+}
+
+.action-bar-right {
+  display: flex;
+  gap: 10px;
+  flex-wrap: nowrap;
+  flex-shrink: 0;
 }
 </style>
+
+

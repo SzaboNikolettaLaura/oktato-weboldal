@@ -2,12 +2,6 @@
   <div>
     <Nav />
 
-    <div class="show-courses cursor-pointer" @click="navigateToLessonEdit">
-      <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32">
-        <path fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8h15M5 16h22M5 24h22M5 11l3-3l-3-3"/>
-      </svg>
-    </div>
-    
     <div class="container relative">
       <div class="sidebar" :class="{'closed': sidebarHidden}">
         <div class="flex flex-row justify-between items-center flex-wrap mb-8">
@@ -53,22 +47,22 @@
       </div>
 
       <div class="main">
-        <h1>{{ selectedCourse?.title }}</h1>
+        <div class="flex items-center gap-2">
+          <h1>{{ selectedCourse?.title }}</h1>
+          <button 
+            v-if="userData.role === 'tanar'"
+            @click="router.push(`/lessonedit?id=${selectedCourse?.lectures[0]?.id}`)"
+            class="p-3 bg-[#09122C] text-white hover:bg-opacity-90 transition-all duration-200 rounded-lg"
+            title="Edit course"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+              <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+            </svg>
+          </button>
+        </div>
         <div v-for="(lecture, lectureIndex) in selectedCourse?.lectures" :key="lectureIndex">
-          <div class="flex items-center gap-2">
-            <h2 class="text-lg">{{ lecture.title }}</h2>
-            <button 
-              v-if="userData.role === 'tanar'"
-              @click="router.push(`/lessonedit?id=${lecture.id}`)"
-              class="p-1 text-blue-500 hover:text-blue-700"
-              title="Edit lecture"
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
-                <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
-              </svg>
-            </button>
-          </div>
+          <h2 class="text-lg">{{ lecture.title }}</h2>
           <div v-for="(part, partIndex) in splitContentWithExercises(lecture.content, lecture.exercises)" :key="partIndex">
             <div v-if="typeof part === 'string'" v-html="part"></div>
             <ExerciseBox v-else :exercise="part.exercise" />
@@ -113,7 +107,7 @@
 </template>
 
 <script setup>
-import { ref } from 'vue';
+import { ref, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 
 const { userData } = useUserData();
@@ -124,16 +118,19 @@ const lastUnlocked = 1;
 const selectedCourse = ref(null);
 const sidebarHidden = ref(false);
 
+// Select first course on page load
+onMounted(() => {
+  if (courses.value && courses.value.length > 0) {
+    selectCourse(0, 0);
+  }
+});
+
 function selectCourse(courseIndex, lectureIndex) {
   selectedCourse.value = courses.value[courseIndex];
 }
 
 function toggleSidebar() {
   sidebarHidden.value = !sidebarHidden.value;
-}
-
-function navigateToLessonEdit() {
-  router.push('/lessonedit');
 }
 
 const isDialogOpen = ref(false);
@@ -301,28 +298,6 @@ async function toggleCourseVisibility(course) {
   background-color: #f8fafc;
   border-radius: 12px;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
-}
-
-.show-courses {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  position: fixed;
-  bottom: 24px;
-  right: 24px;
-  width: 48px;
-  height: 48px;
-  border-radius: 50%;
-  background-color: #09122C;
-  color: #E17564;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-  transition: all 0.2s;
-}
-
-.show-courses:hover {
-  transform: scale(1.05);
-  background-color: #872341;
-  box-shadow: 0 6px 8px rgba(0,0,0,0.15);
 }
 
 .add-lesson-btn {

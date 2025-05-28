@@ -2,7 +2,7 @@
   <div>
     <Nav />
 
-    <div class="container relative">
+    <div class="container relative w-full" style="max-width:unset;">
       <div class="sidebar" :class="{'closed': sidebarHidden}">
         <div class="flex flex-row justify-between items-center flex-wrap mb-8">
           <h2 class="sidebar-title">Courses</h2>
@@ -151,7 +151,7 @@ const { courseData: courses } = await useCourses(userData.value.token);
 const router = useRouter();
 const { tryCode } = useTryCode();
 
-const lastUnlocked = 1;
+const lastUnlocked = 2;
 const selectedCourse = ref(null);
 const sidebarHidden = ref(false);
 const courseTitle = ref('');
@@ -289,7 +289,6 @@ async function toggleCourseVisibility(course) {
   padding: 32px;
   max-width: 1200px;
   margin: 0 auto;
-  background-color: #ffffff;
 }
 
 .main h1 {

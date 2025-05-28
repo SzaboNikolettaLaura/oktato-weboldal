@@ -5,7 +5,7 @@
     <div class="bg-white min-h-screen flex flex-col h-full">
         <!-- Navbar -->
          <Navbar/>
-         <div class="flex-1 justify-between h-full bg-[#f8f8f8]">
+         <div class="flex-1 justify-between bg-[#f8f8f8]">
            <NuxtPage />
          </div>
     </div>

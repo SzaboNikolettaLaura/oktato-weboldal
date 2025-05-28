@@ -9,6 +9,14 @@
             <option v-bind:value="c.id" v-for="c of courseData" v-bind:key="c.id">{{ c.title }}</option>
           </select>
         </div>
+        <div v-if="!course" class="new-course-input">
+          <input 
+            v-model="newCourseName" 
+            type="text" 
+            placeholder="Új kurzus neve..." 
+            class="filter-input"
+          >
+        </div>
         <div class="editor-type-selector">
           <select v-model="defaultEditorType" class="editor-type-select" @change="handleEditorTypeChange">
             <option value="plain">Egyszerű szöveg</option>
@@ -65,6 +73,14 @@
           </div>
         </div>
         <div v-if="currentLessonId === lesson.id" class="editor-container" :class="{ 'full-page': defaultEditorType === 'markdown' }">
+          <div class="lesson-title-container">
+            <input 
+              v-model="lectureTitle" 
+              type="text" 
+              placeholder="Lecke címe..." 
+              class="lesson-title-input"
+            >
+          </div>
           <div v-if="defaultEditorType === 'markdown'" class="markdown-editor">
             <div class="markdown-input">
               <textarea v-model="markdownContent" placeholder="Írd ide a markdown szöveget..." class="block-textarea"></textarea>
@@ -223,6 +239,7 @@ const currentLessonId = ref(null);
 const defaultEditorType = ref('plain');
 const markdownContent = ref('');
 const selectedBlockType = ref('');
+const newCourseName = ref('');
 
 watch(course, (newCourse) => {
   if (newCourse) {
@@ -231,7 +248,7 @@ watch(course, (newCourse) => {
       courseLessons.value = selectedCourse.lectures.map(lecture => ({
         id: lecture.id,
         title: lecture.title,
-        visible: lecture.visible.data[0]
+        visible: lecture?.visible?.data[0] || false
       }));
     }
   } else {
@@ -368,9 +385,49 @@ const saveLesson = async (lesson) => {
     lesson.blocks = lessonBlocks.value;
   }
   
+  // Check if lesson has content
+  if (!lesson.blocks || lesson.blocks.length === 0) {
+    alert('A lecke nem lehet üres!');
+    return;
+  }
+  
+  // Handle course creation if needed
+  let courseId = course.value;
+  if (!courseId) {
+    if (!newCourseName.value || newCourseName.value.trim() === '') {
+      alert('Kérlek válassz ki egy kurzust vagy adj meg egy új kurzus nevet!');
+      return;
+    }
+    
+    try {
+      // Create new course first
+      const courseResponse = await axios.post('/api/courses', {
+        title: newCourseName.value.trim(),
+        token: userData.value.token
+      });
+      
+      if (courseResponse.status === 200) {
+        // Get the new course ID - we need to fetch courses again to get the ID
+        const { courseData: updatedCourses } = await useCourses(userData.value.token);
+        const newCourse = updatedCourses.value.find(c => c.title === newCourseName.value.trim());
+        if (newCourse) {
+          courseId = newCourse.id;
+          course.value = courseId;
+        } else {
+          alert('Hiba történt az új kurzus létrehozása során.');
+          return;
+        }
+      }
+    } catch (error) {
+      console.error('Error creating course:', error);
+      alert('Hiba történt az új kurzus létrehozása során.');
+      return;
+    }
+  }
+  
   // Update content from editors before saving
   if (defaultEditorType.value === 'markdown') {
-    // Extract title from markdown content if it exists
+    // Extract title from markdown content if it exists, otherwise use input field
     const titleMatch = markdownContent.value.match(/^# (.*?)(?:\n|$)/);
     const extractedTitle = titleMatch ? titleMatch[1].trim() : lectureTitle.value;
     
@@ -387,23 +444,32 @@ const saveLesson = async (lesson) => {
         block.content = editors[index].getValue();
       }
     });
+    // Use the title from the input field
+    lesson.title = lectureTitle.value;
+  }
+  
+  // Set default title if empty
+  if (!lesson.title || lesson.title.trim() === '') {
+    lesson.title = 'Új lecke';
   }
   
   const method = lesson.id ? 'patch' : 'post';
   const url = lesson.id ? `/api/lectures?id=${lesson.id}` : '/api/lectures';
   
   try {
-    await axios[method](url, { 
-      course: course.value, 
+    const response = await axios[method](url, { 
+      course: courseId, 
       blocks: lesson.blocks, 
       title: lesson.title,
       visibility: lesson.visible,
       token: userData.value.token 
     });
+    
+    alert('Lecke sikeresen mentve!');
     navigateTo('/course');
   } catch (error) {
     console.error('Error saving lecture:', error);
-    alert('Failed to save lecture. Please try again.');
+    alert('Hiba történt a lecke mentése során. Kérlek próbáld újra.');
   }
 };
 
@@ -457,49 +523,52 @@ const generateAIContent = async () => {
   isGenerating.value = true;
   try {
     const response = await axios.post('/api/gemini', {
-      prompt: aiInput.value + ' Magyarul válaszolj és kommentezd a kódot. Ha kódot generálsz, használd a ```html jelölést. A kód előtt használd a [KÓD LEÍRÁS] jelölést, és írd le röviden (max 5-6 szó) magyarul, hogy mit csinál a kód. A kód mindig legyen minimális, csak a szükséges elemeket tartalmazza. Ne használj markdown formázást (**), csak sima szöveget. Ne használj bevezető mondatokat vagy felesleges magyarázatokat, csak a tényleges leckét és kódot add meg.'
+      prompt: aiInput.value + ' Magyarul válaszolj és kommentezd a kódot. Ha kódot generálsz, használd a ```html jelölést. A kód előtt használd a [KÓD LEÍRÁS] jelölést, utána új sor, és írd le röviden (max 5-6 szó) magyarul, hogy mit csinál a kód. A kód mindig legyen minimális, csak a szükséges elemeket tartalmazza. Ne használj markdown formázást (**), csak sima szöveget. Ne használj bevezető mondatokat vagy felesleges magyarázatokat, csak a tényleges leckét és kódot add meg.'
     });
     
     const content = response.data;
     
-    // Parse content to separate text and code
-    const parts = content.split('```html');
+    // Split by [KÓD LEÍRÁS] to identify code sections
+    const sections = content.split(/\[KÓD LEÍRÁS\]/);
     
-    // Extract description using the [KÓD LEÍRÁS] delimiter
-    const descriptionMatch = parts[0].match(/\[KÓD LEÍRÁS\](.*?)(?=\n|$)/s);
-    const description = descriptionMatch ? descriptionMatch[1].trim() : '';
-    
-    // Remove description from text content
-    let textContent = parts[0].trim();
-    if (descriptionMatch) {
-      textContent = textContent.replace(/\[KÓD LEÍRÁS\].*?(?=\n|$)/s, '').trim();
+    // First section is always text (before any code)
+    if (sections[0].trim()) {
+      addTextBlock();
+      lessonBlocks.value[lessonBlocks.value.length - 1].content = sections[0].trim();
     }
     
-    // Add text part if exists
-    if (textContent) {
-      if (!lessonBlocks.value.some(block => block.type === 'text')) {
-        addTextBlock();
-      }
-      const lastTextBlockIndex = [...lessonBlocks.value].reverse().findIndex(block => block.type === 'text');
-      const textIndex = lessonBlocks.value.length - 1 - lastTextBlockIndex;
-      lessonBlocks.value[textIndex].content = textContent;
-    }
-    
-    // Add code part if exists
-    if (parts.length > 1) {
-      const codeContent = parts[1].split('```')[0].trim();
-      if (!lessonBlocks.value.some(block => block.type === 'code')) {
+    // Process remaining sections (each starts with a code block)
+    for (let i = 1; i < sections.length; i++) {
+      const section = sections[i];
+      
+      // Find the code block (between ```html and ```)
+      const codeMatch = section.match(/```html\s*([\s\S]*?)```/);
+      
+      if (codeMatch) {
+        const codeContent = codeMatch[1].trim();
+        
+        // Extract description (text before ```html)
+        const beforeCode = section.substring(0, section.indexOf('```html')).trim();
+        
+        // Extract text after code block - find the end of the closing ```
+        const codeEndIndex = section.indexOf('```', section.indexOf('```html') + 7) + 3;
+        const afterCode = section.substring(codeEndIndex).trim();
+        
+        // Add code block
         addCodeBlock();
+        const codeBlockIndex = lessonBlocks.value.length - 1;
+        lessonBlocks.value[codeBlockIndex].description = beforeCode;
+        
+        nextTick(() => {
+          initMonacoEditor(codeBlockIndex, codeContent);
+        });
+        
+        // Add text after code if exists
+        if (afterCode) {
+          addTextBlock();
+          lessonBlocks.value[lessonBlocks.value.length - 1].content = afterCode;
+        }
       }
-      const lastCodeBlockIndex = [...lessonBlocks.value].reverse().findIndex(block => block.type === 'code');
-      const codeIndex = lessonBlocks.value.length - 1 - lastCodeBlockIndex;
-      
-      // Set the description in the code block
-      lessonBlocks.value[codeIndex].description = description;
-      
-      nextTick(() => {
-        initMonacoEditor(codeIndex, codeContent);
-      });
     }
     
     showInputField.value = false;
@@ -810,7 +879,7 @@ onMounted(async () => {
       // Set the course and title
       course.value = lecture.courseId;
       lectureTitle.value = lecture.title;
-      visibility.value = lecture.visible.data[0]; // Set visibility, default to true if not set
+      visibility.value = lecture?.visible?.data[0] || false; // Set visibility, default to true if not set
       
       // Set the blocks and trim text content
       lessonBlocks.value = lecture.blocks.map(block => {
@@ -1731,6 +1800,49 @@ onUnmounted(() => {
 .header-cell {
   font-weight: bold;
   background-color: #f8f9fa;
+}
+
+.lesson-title-container {
+  padding: 20px;
+  background: white;
+  border-bottom: 1px solid #dee2e6;
+}
+
+.lesson-title-input {
+  width: 100%;
+  padding: 12px 16px;
+  font-size: 24px;
+  font-weight: 600;
+  border: 2px solid #dee2e6;
+  border-radius: 8px;
+  background: white;
+  color: #333;
+  transition: border-color 0.2s ease;
+}
+
+.lesson-title-input:focus {
+  outline: none;
+  border-color: #007bff;
+  box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.1);
+}
+
+.lesson-title-input::placeholder {
+  color: #999;
+  font-weight: 400;
+}
+
+.new-course-input {
+  min-width: 200px;
+}
+
+.new-course-input .filter-input {
+  border: 2px solid #28a745;
+  background-color: #f8fff9;
+}
+
+.new-course-input .filter-input:focus {
+  border-color: #20c997;
+  box-shadow: 0 0 0 3px rgba(40, 167, 69, 0.1);
 }
 </style>
 

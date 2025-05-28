@@ -17,14 +17,6 @@ p {
   @apply mb-4 leading-relaxed;
 }
 
-ul, ol {
-  @apply mb-4 ml-6;
-}
-
-li {
-  @apply mb-2;
-}
-
 ul li {
   @apply list-disc;
 }

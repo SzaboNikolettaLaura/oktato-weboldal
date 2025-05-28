@@ -6,14 +6,14 @@
       <div class="sidebar" :class="{'closed': sidebarHidden}">
         <div class="flex flex-row justify-between items-center flex-wrap mb-8">
           <h2 class="sidebar-title">Courses</h2>
-          <div @click="openDialog" v-if="userData.role === 'tanar'" class="add-lesson-btn rounded-full w-8 h-8 text-white flex items-center justify-center cursor-pointer p-4 m-4 bg-green-500">+</div>
+          <div @click="router.push('/lessonedit')" v-if="userData.role === 'tanar'" class="add-lesson-btn rounded-full w-8 h-8 text-white flex items-center justify-center cursor-pointer p-4 m-4 bg-green-500"><span style="text-box-trim:trim-both;">+</span></div>
         </div>
         <div class="sidebar-content">
-          <ol class="space-y-2">
+          <ol class="space-y-2" style="list-style-type: none;">
             <li :class="{
                 'text-[#1f5f5f]': lastUnlocked > courseIndex,
                 'bg-gray-200': selectedCourse?.title === course.title
-            }" class="cursor-pointer" v-for="(course, courseIndex) in courses" :key="courseIndex" @click="lastUnlocked >= courseIndex ? selectCourse(courseIndex, 0) : () => {}">
+            }" class="cursor-pointer" style="list-style-type: none;" v-for="(course, courseIndex) in courses" :key="courseIndex" @click="lastUnlocked >= courseIndex ? selectCourse(courseIndex, 0) : () => {}">
               <div class="flex justify-between items-center">
                 <span>{{ course.title }}</span>
                 <button 
@@ -36,8 +36,8 @@
                   </svg>
                 </button>
               </div>
-              <ol v-if="course.lectures.length > 1" class="space-y-2">
-                <li class="cursor-pointer" v-for="(lecture, lectureIndex) in course.lectures" :key="lectureIndex">
+              <ol v-if="course.lectures.length > 1" class="space-y-2" style="list-style-type: none;">
+                <li class="cursor-pointer" style="list-style-type: none;" v-for="(lecture, lectureIndex) in course.lectures" :key="lectureIndex">
                     {{ lecture.title }}
                 </li>
               </ol>
@@ -63,9 +63,44 @@
         </div>
         <div v-for="(lecture, lectureIndex) in selectedCourse?.lectures" :key="lectureIndex">
           <h2 class="text-lg">{{ lecture.title }}</h2>
-          <div v-for="(part, partIndex) in splitContentWithExercises(lecture.content, lecture.exercises)" :key="partIndex">
-            <div v-if="typeof part === 'string'" v-html="part"></div>
-            <ExerciseBox v-else :exercise="part.exercise" />
+          <div v-for="(block, blockIndex) in lecture.blocks" :key="blockIndex">
+            <div v-if="block.type === 'text'">
+              <div v-if="block.editorType === 'markdown'" v-html="renderMarkdown(block.content)"></div>
+              <div v-else class="plain-text">{{ block.content }}</div>
+            </div>
+            <div v-else-if="block.type === 'code'" class="exercise-box">
+              <h3 class="text-lg font-semibold mb-2">{{ block.description }}</h3>
+              <button 
+                @click="() => { tryCode = block.content; router.push('/try'); }"
+                class="mt-4 px-4 py-2 bg-[#BE3144] text-white rounded-lg hover:bg-[#872341] transition-colors"
+              >
+                Try it!
+              </button>
+            </div>
+            <div v-else-if="block.type === 'test'" class="test-box">
+              <h3 class="text-lg font-semibold mb-2">{{ block.title }}</h3>
+              <div v-for="(question, qIndex) in block.questions" :key="qIndex">
+                <p class="mb-2">{{ question.text }}</p>
+                <div v-if="question.type === 'multiple'">
+                  <div v-for="(option, oIndex) in question.options" :key="oIndex" class="ml-4">
+                    <input type="radio" :name="'q' + qIndex" :value="oIndex" class="mr-2">
+                    {{ option }}
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div v-else-if="block.type === 'highlight'" class="highlight-box">
+              <div v-html="renderMarkdown(block.content)"></div>
+            </div>
+            <div v-else-if="block.type === 'table'" class="table-box">
+              <table class="lesson-table">
+                <tr v-for="(row, rowIndex) in block.rows" :key="rowIndex" :class="{ 'header-row': block.hasHeader && rowIndex === 0 }">
+                  <td v-for="(cell, colIndex) in row" :key="colIndex" :class="{ 'header-cell': block.hasHeader && rowIndex === 0 }">
+                    {{ cell }}
+                  </td>
+                </tr>
+              </table>
+            </div>
           </div>
         </div>
       </div>
@@ -109,14 +144,21 @@
 <script setup>
 import { ref, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
+import { marked } from 'marked';
 
 const { userData } = useUserData();
 const { courseData: courses } = await useCourses(userData.value.token);
 const router = useRouter();
+const { tryCode } = useTryCode();
 
 const lastUnlocked = 1;
 const selectedCourse = ref(null);
 const sidebarHidden = ref(false);
+const courseTitle = ref('');
+
+function renderMarkdown(content) {
+  return marked(content);
+}
 
 // Select first course on page load
 onMounted(() => {
@@ -134,7 +176,6 @@ function toggleSidebar() {
 }
 
 const isDialogOpen = ref(false);
-const courseTitle = ref('');
 
 // Open the dialog
 function openDialog() {
@@ -146,6 +187,7 @@ function closeDialog() {
   isDialogOpen.value = false;
   courseTitle.value = ''; // Reset course title input
 }
+
 async function submitCourse() {
   try {
     const response = await fetch('/api/courses', {
@@ -168,28 +210,6 @@ async function submitCourse() {
     console.error('Error creating course:', error);
     alert('An error occurred while creating the course.');
   }
-}
-
-function splitContentWithExercises(content, exercises) {
-  let contentParts = content.split(/(@\{[^\}]+\})/);
-  let result = [];
-
-  contentParts.forEach(part => {
-    if (part.startsWith('@{')) {
-      const exerciseId = Number(part.match(/(\d+)/)[1]);
-      const exercise = exercises.find(ex => ex.id === exerciseId);
-      if (exercise) {
-        result.push({
-          type: 'exercise',
-          exercise: exercise
-        });
-      }
-    } else {
-      result.push(part);
-    }
-  });
-
-  return result;
 }
 
 async function toggleCourseVisibility(course) {
@@ -222,16 +242,13 @@ async function toggleCourseVisibility(course) {
 .container {
   display: flex;
   min-height: calc(100vh - 64px);
-  background-color: #f8fafc;
 }
 
 .sidebar {
   width: 300px;
   background-color: #e2e8f0;
   padding: 24px;
-  height: calc(100vh - 64px);
   overflow-y: auto;
-  box-shadow: 2px 0 8px rgba(0, 0, 0, 0.05);
   border-right: 1px solid #e2e8f0;
 }
 
@@ -292,12 +309,47 @@ async function toggleCourseVisibility(course) {
 }
 
 .exercise-box {
-  border: 1px solid #e2e8f0;
-  padding: 24px;
-  margin: 24px 0;
   background-color: #f8fafc;
-  border-radius: 12px;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 20px;
+  margin: 16px 0;
+}
+
+.exercise-box pre {
+  background-color: #1e293b;
+  color: #e2e8f0;
+  padding: 16px;
+  border-radius: 6px;
+  overflow-x: auto;
+  margin: 12px 0;
+}
+
+.exercise-box code {
+  font-family: 'Fira Code', monospace;
+  font-size: 14px;
+}
+
+.test-box {
+  background-color: #f0fdf4;
+  border: 1px solid #86efac;
+  border-radius: 8px;
+  padding: 20px;
+  margin: 16px 0;
+}
+
+.test-box h3 {
+  color: #166534;
+  margin-bottom: 16px;
+}
+
+.test-box p {
+  color: #1f2937;
+  margin-bottom: 12px;
+}
+
+.test-box input[type="radio"] {
+  accent-color: #166534;
 }
 
 .add-lesson-btn {
@@ -335,7 +387,7 @@ async function toggleCourseVisibility(course) {
 }
 
 .visibility-on:hover, .visibility-off:hover {
-  background-color: #f1f5f9;
+  opacity: 0.8;
 }
 
 ol {
@@ -353,7 +405,6 @@ ol li {
 ol li:before {
   content: counters(item, ".") ".";
   margin-right: 0.8em;
-  color: #1f5f5f;
   font-weight: 600;
 }
 
@@ -384,5 +435,51 @@ ol li ol {
   .main h1 {
     font-size: 28px;
   }
+}
+
+.plain-text {
+  white-space: pre-wrap;
+  font-family: inherit;
+  line-height: 1.6;
+  color: #1f2937;
+}
+
+.highlight-box {
+  background-color: #fef3c7;
+  border: 1px solid #fbbf24;
+  border-radius: 8px;
+  padding: 20px;
+  margin: 16px 0;
+}
+
+.table-box {
+  background-color: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 20px;
+  margin: 16px 0;
+}
+
+.lesson-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.lesson-table th,
+.lesson-table td {
+  padding: 8px;
+  text-align: left;
+}
+
+.lesson-table th {
+  background-color: #f3f4f6;
+}
+
+.header-row {
+  background-color: #f3f4f6;
+}
+
+.header-cell {
+  font-weight: 600;
 }
 </style>

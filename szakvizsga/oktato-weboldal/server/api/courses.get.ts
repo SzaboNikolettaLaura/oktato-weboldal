@@ -8,6 +8,7 @@ export default defineEventHandler(async (event) => {
       return sendError(event, new Error('Unauthorized'));
     }
     const visibleQuery = user.role === 'tanar' ? '' : 'WHERE visible = 1';
+    
     // Fetch all courses
     const [courses, __] = await event.context.$mysql.query(`
       SELECT * FROM courses ${visibleQuery}
@@ -22,17 +23,16 @@ export default defineEventHandler(async (event) => {
         SELECT * FROM lectures WHERE courseId = ? ${visibleQuery}
       `, [course.id]);
 
-      // Add exercises to each lecture
+      // Parse the blocks from content for each lecture
       for (const lecture of lectures) {
-        const [exercises, __] = await event.context.$mysql.query(`
-          SELECT * FROM exercises WHERE lectureId = ?
-        `, [lecture.id]);
-
-        // Add the exercises to the lecture
-        lecture.exercises = exercises;
+        try {
+          lecture.blocks = JSON.parse(lecture.content);
+        } catch (error) {
+          lecture.blocks = [];
+        }
       }
 
-      // Push the course with the lectures (and their exercises) as a nested attribute
+      // Push the course with the lectures as a nested attribute
       result.push({
         ...course,
         lectures: lectures

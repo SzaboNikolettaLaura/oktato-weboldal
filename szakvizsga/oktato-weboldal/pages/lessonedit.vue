@@ -1,8 +1,8 @@
 <template>
-  <div class="lesson-editor">
+  <div class="lesson-editor" @contextmenu.prevent="showContextMenu">
     <Nav />
-    <div class="tabs-container">
-      <div class="tabs-header">
+    <div class="action-bar" :style="{ top: isNavbarVisible ? '60px' : '0' }">
+      <div class="action-bar-left">
         <div class="course-selector">
           <select v-model="course" class="filter-input" @change="loadLessons">
             <option value="" selected="selected">Kurzus</option>
@@ -13,34 +13,7 @@
           <select v-model="defaultEditorType" class="editor-type-select" @change="handleEditorTypeChange">
             <option value="plain">Egyszerű szöveg</option>
             <option value="markdown">Markdown</option>
-            <option value="rich">Rich Editor</option>
           </select>
-        </div>
-        <div class="tabs-list">
-          <div v-for="lesson in courseLessons" 
-               :key="lesson.id" 
-               class="tab"
-               :class="{ 'active': (currentLessonId === lesson.id) || (Number(route.query.id) === lesson.id) }"
-               @click="() => { navigateTo(`/lessonedit?id=${lesson.id}`); loadLesson(lesson.id); }">
-            <span class="tab-title">{{ lesson.title || 'Új lecke' }}</span>
-            <button v-if="lesson.isNew" class="close-tab" @click.stop="closeTab(lesson.id)">&times;</button>
-          </div>
-          <button class="add-tab-btn" @click="createNewLesson">+</button>
-        </div>
-      </div>
-    </div>
-    <div class="action-bar" :class="{ pinned: isPinned }" :style="{ top: isPinned && !isNavbarVisible ? '0' : isPinned ? `${navbarHeight}px` : '0', marginTop: isNavbarVisible && !isPinned ? '0px' : '15px' }">
-      <div class="action-bar-left">
-        <button class="pin-button" @click="togglePin">
-          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path v-if="isPinned" d="M12 2l-4 4h8l-4-4z"></path>
-            <path v-if="!isPinned" d="M12 2l-4 4h8l-4-4z" fill="currentColor"></path>
-          </svg>
-          {{ isPinned ? 'Unpin' : 'Pin' }}
-        </button>
-        <div>
-          <span>Cím: </span>
-          <input type="text" v-model="lectureTitle" class="filter-input">
         </div>
       </div>
       <div class="action-bar-right">
@@ -55,13 +28,19 @@
             Feltöltés...
           </span>
         </button>
-        <template v-if="defaultEditorType !== 'rich'">
-          <button v-if="defaultEditorType !== 'markdown'" @click="addTextBlock" class="action-btn">Szöveg+</button>
-          <button v-if="defaultEditorType !== 'markdown'" @click="addCodeBlock" class="action-btn">Kód+</button>
-          <button v-if="defaultEditorType !== 'markdown'" @click="addHighlightBlock" class="action-btn">Kiemelés+</button>
-          <button v-if="defaultEditorType !== 'markdown'" @click="addTestBlock" class="action-btn">Teszt+</button>
-          <button v-if="defaultEditorType !== 'markdown'" @click="addTableBlock" class="action-btn">Táblázat+</button>
-        </template>
+        <div class="add-block-dropdown">
+          <select v-model="selectedBlockType" class="action-btn" @change="handleBlockTypeChange">
+            <option value="">Blokk hozzáadása</option>
+            <option value="new">+ Új lecke</option>
+            <template v-if="defaultEditorType !== 'markdown'">
+              <option value="text">Szöveg</option>
+              <option value="code">Kód</option>
+              <option value="highlight">Kiemelés</option>
+              <option value="table">Táblázat</option>
+            </template>
+            <option value="test">Teszt</option>
+          </select>
+        </div>
         <button @click="toggleVisibility" class="action-btn" :class="{ 'visibility-on': visibility, 'visibility-off': !visibility }">
           <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <path v-if="visibility" d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
@@ -74,155 +53,115 @@
       </div>
     </div>
 
-    <div class="editor-container" :class="{ 'full-page': defaultEditorType === 'markdown' || defaultEditorType === 'rich' }">
-      <div v-if="defaultEditorType === 'markdown'" class="markdown-editor">
-        <div class="markdown-input">
-          <textarea v-model="markdownContent" placeholder="Írd ide a markdown szöveget..." class="block-textarea" />
-        </div>
-        <div class="markdown-preview" v-html="renderMarkdown(markdownContent)"></div>
-      </div>
-      <div v-else-if="defaultEditorType === 'rich'" class="rich-editor">
-        <div class="rich-editor-input">
-          <QuillEditor
-            v-model:content="richContent"
-            contentType="html"
-            theme="snow"
-            toolbar="full"
-            :options="{
-              modules: {
-                toolbar: [
-                  ['bold', 'italic', 'underline', 'strike'],
-                  ['blockquote', 'code-block'],
-                  [{ 'header': 1 }, { 'header': 2 }],
-                  [{ 'list': 'ordered'}, { 'list': 'bullet' }],
-                  [{ 'script': 'sub'}, { 'script': 'super' }],
-                  [{ 'indent': '-1'}, { 'indent': '+1' }],
-                  [{ 'direction': 'rtl' }],
-                  [{ 'size': ['small', false, 'large', 'huge'] }],
-                  [{ 'header': [1, 2, 3, 4, 5, 6, false] }],
-                  [{ 'color': [] }, { 'background': [] }],
-                  [{ 'font': [] }],
-                  [{ 'align': [] }],
-                  ['clean'],
-                  ['link', 'image', 'video']
-                ]
-              }
-            }"
-          />
-        </div>
-      </div>
-      <draggable 
-        v-else
-        v-model="lessonBlocks" 
-        class="blocks"
-        item-key="id"
-        handle=".block-header"
-        :animation="150"
-        ghost-class="ghost"
-        drag-class="drag"
-        direction="vertical"
-        @start="dragStart"
-        @end="dragEnd"
-      >
-        <template #item="{ element: block, index }">
-          <div class="block">
-            <div v-if="block.type === 'text'">
-              <div class="block-header">
-                <span class="block-label">Szöveg Blokk</span>
-                <div class="block-actions">
-                  <select v-model="block.editorType" class="editor-select">
-                    <option value="plain">Egyszerű szöveg</option>
-                    <option value="markdown">Markdown</option>
-                    <option value="rich">Rich Editor</option>
-                  </select>
-                  <button @click="removeBlock(index)" class="btn btn-danger">Törlés</button>
-                </div>
-              </div>
-              <div v-if="block.editorType === 'plain'" class="block-textarea">
-                <textarea v-model="block.content" placeholder="Írd ide a magyarázatot..." />
-              </div>
-              <div v-else-if="block.editorType === 'markdown'" class="markdown-editor">
-                <div class="markdown-input">
-                  <textarea v-model="block.content" placeholder="Írd ide a markdown szöveget..." class="block-textarea" />
-                </div>
-                <div class="markdown-preview" v-html="renderMarkdown(block.content)"></div>
-              </div>
-              <div v-else-if="block.editorType === 'rich'" class="rich-editor">
-                <QuillEditor
-                  v-model:content="block.content"
-                  contentType="html"
-                  theme="snow"
-                  toolbar="full"
-                  :options="{
-                    modules: {
-                      toolbar: [
-                        ['bold', 'italic', 'underline', 'strike'],
-                        ['blockquote', 'code-block'],
-                        [{ 'header': 1 }, { 'header': 2 }],
-                        [{ 'list': 'ordered'}, { 'list': 'bullet' }],
-                        [{ 'script': 'sub'}, { 'script': 'super' }],
-                        [{ 'indent': '-1'}, { 'indent': '+1' }],
-                        [{ 'direction': 'rtl' }],
-                        [{ 'size': ['small', false, 'large', 'huge'] }],
-                        [{ 'header': [1, 2, 3, 4, 5, 6, false] }],
-                        [{ 'color': [] }, { 'background': [] }],
-                        [{ 'font': [] }],
-                        [{ 'align': [] }],
-                        ['clean'],
-                        ['link', 'image', 'video']
-                      ]
-                    }
-                  }"
-                />
-              </div>
-            </div>
-            <div v-else-if="block.type === 'code'" class="code-block">
-              <div class="block-header">
-                <span class="block-label">Kód Blokk</span>
-                <button @click="removeBlock(index)" class="btn btn-danger">Törlés</button>
-              </div>
-              <input class="p-4 w-full" type="text" v-model="block.description" placeholder="Kód leírása">
-              <div :id="`monaco-editor-${index}`" class="monaco-container"></div>
-            </div>
-            <div v-else-if="block.type === 'highlight'" class="highlight-block">
-              <div class="block-header">
-                <span class="block-label">Kiemelés Blokk</span>
-                <button @click="removeBlock(index)" class="btn btn-danger">Törlés</button>
-              </div>
-              <textarea v-model="block.content" placeholder="Írd ide a kiemelendő fontos információt..." class="highlight-textarea" />
-            </div>
-            <div v-else-if="block.type === 'test'" class="test-block">
-              <div class="block-header">
-                <span class="block-label">Teszt Blokk</span>
-                <div class="block-buttons">
-                  <button @click="removeBlock(index)" class="btn btn-danger">Törlés</button>
-                  <button @click="openModal(block, index)" class="btn btn-primary">Módosítás</button>
-                </div>
-              </div>
-              <p>{{ block.title }}</p>
-            </div>
-            <div v-else-if="block.type === 'table'" class="table-block">
-              <div class="block-header">
-                <span class="block-label">Táblázat Blokk</span>
-                <button @click="removeBlock(index)" class="btn btn-danger">Törlés</button>
-              </div>
-              <div class="table-controls">
-                <button @click="addTableRow(block)" class="btn btn-secondary">Sor+</button>
-                <button @click="addTableColumn(block)" class="btn btn-secondary">Oszlop+</button>
-              </div>
-              <div class="table-container">
-                <table class="lesson-table">
-                  <tr v-for="(row, rowIndex) in block.rows" :key="rowIndex">
-                    <td v-for="(cell, colIndex) in row" :key="colIndex">
-                      <textarea v-model="block.rows[rowIndex][colIndex]" class="table-cell"></textarea>
-                    </td>
-                  </tr>
-                </table>
-              </div>
-            </div>
+    <div class="lessons-container">
+      <div v-for="lesson in courseLessons" :key="lesson.id" class="lesson-section">
+        <div class="lesson-header" @click="loadLesson(lesson.id)">
+          <h3>{{ lesson.title || 'Új lecke' }}</h3>
+          <div class="lesson-actions">
+            <button @click.stop="toggleLessonVisibility(lesson)" class="action-btn" :class="{ 'visibility-on': lesson.visible, 'visibility-off': !lesson.visible }">
+              {{ lesson.visible ? 'Látható' : 'Rejtett' }}
+            </button>
+            <button @click.stop="saveLesson(lesson)" class="action-btn">Mentés</button>
           </div>
-        </template>
-      </draggable>
+        </div>
+        <div v-if="currentLessonId === lesson.id" class="editor-container" :class="{ 'full-page': defaultEditorType === 'markdown' }">
+          <div v-if="defaultEditorType === 'markdown'" class="markdown-editor">
+            <div class="markdown-input">
+              <textarea v-model="markdownContent" placeholder="Írd ide a markdown szöveget..." class="block-textarea"></textarea>
+            </div>
+            <div class="markdown-preview" v-html="renderMarkdown(markdownContent)"></div>
+          </div>
+          <draggable 
+            v-else
+            v-model="lessonBlocks" 
+            class="blocks"
+            item-key="id"
+            handle=".block-header"
+            :animation="150"
+            ghost-class="ghost"
+            drag-class="drag"
+            direction="vertical"
+            @start="dragStart"
+            @end="dragEnd"
+          >
+            <template #item="{ element: block, index }">
+              <div class="block">
+                <div v-if="block.type === 'text'">
+                  <div class="block-header">
+                    <span class="block-label">Szöveg Blokk</span>
+                    <div class="block-actions">
+                      <select v-model="block.editorType" class="editor-select">
+                        <option value="plain">Egyszerű szöveg</option>
+                        <option value="markdown">Markdown</option>
+                      </select>
+                      <button @click="removeBlock(index)" class="btn btn-danger">Törlés</button>
+                    </div>
+                  </div>
+                  <div v-if="block.editorType === 'plain'" class="block-textarea">
+                    <textarea v-model="block.content" placeholder="Írd ide a magyarázatot..."></textarea>
+                  </div>
+                  <div v-else-if="block.editorType === 'markdown'" class="markdown-editor">
+                    <div class="markdown-input">
+                      <textarea v-model="block.content" placeholder="Írd ide a markdown szöveget..." class="block-textarea"></textarea>
+                    </div>
+                    <div class="markdown-preview" v-html="renderMarkdown(block.content)"></div>
+                  </div>
+                </div>
+                <div v-else-if="block.type === 'code'" class="code-block">
+                  <div class="block-header">
+                    <span class="block-label">Kód Blokk</span>
+                    <button @click="removeBlock(index)" class="btn btn-danger">Törlés</button>
+                  </div>
+                  <input class="p-4 w-full" type="text" v-model="block.description" placeholder="Kód leírása">
+                  <div :id="`monaco-editor-${index}`" class="monaco-container" style="height: 250px;"></div>
+                </div>
+                <div v-else-if="block.type === 'highlight'" class="highlight-block">
+                  <div class="block-header">
+                    <span class="block-label">Kiemelés Blokk</span>
+                    <button @click="removeBlock(index)" class="btn btn-danger">Törlés</button>
+                  </div>
+                  <textarea v-model="block.content" placeholder="Írd ide a kiemelendő fontos információt..." class="highlight-textarea"></textarea>
+                </div>
+                <div v-else-if="block.type === 'test'" class="test-block">
+                  <div class="block-header">
+                    <span class="block-label">Teszt Blokk</span>
+                    <div class="block-buttons">
+                      <button @click="removeBlock(index)" class="btn btn-danger">Törlés</button>
+                      <button @click="openModal(block, index)" class="btn btn-primary">Módosítás</button>
+                    </div>
+                  </div>
+                  <p>{{ block.title }}</p>
+                </div>
+                <div v-else-if="block.type === 'table'" class="table-block">
+                  <div class="block-header">
+                    <span class="block-label">Táblázat Blokk</span>
+                    <div class="block-actions">
+                      <label class="header-toggle">
+                        <input type="checkbox" v-model="block.hasHeader">
+                        Fejléc
+                      </label>
+                      <button @click="removeBlock(index)" class="btn btn-danger">Törlés</button>
+                    </div>
+                  </div>
+                  <div class="table-controls">
+                    <button @click="addTableRow(block)" class="btn btn-secondary">Sor+</button>
+                    <button @click="addTableColumn(block)" class="btn btn-secondary">Oszlop+</button>
+                  </div>
+                  <div class="table-container">
+                    <table class="lesson-table">
+                      <tr v-for="(row, rowIndex) in block.rows" :key="rowIndex" :class="{ 'header-row': block.hasHeader && rowIndex === 0 }">
+                        <td v-for="(cell, colIndex) in row" :key="colIndex">
+                          <textarea v-model="block.rows[rowIndex][colIndex]" class="table-cell" :class="{ 'header-cell': block.hasHeader && rowIndex === 0 }"></textarea>
+                        </td>
+                      </tr>
+                    </table>
+                  </div>
+                </div>
+              </div>
+            </template>
+          </draggable>
+        </div>
+      </div>
     </div>
 
     <button @click="toggleInputField" class="ai-generation-btn">AI</button>
@@ -259,8 +198,6 @@ import { useRoute } from 'vue-router';
 import * as monaco from 'monaco-editor';
 import draggable from 'vuedraggable';
 import { marked } from 'marked';
-import { QuillEditor } from '@vueup/vue-quill';
-import '@vueup/vue-quill/dist/vue-quill.snow.css';
 
 const route = useRoute();
 const { userData } = useUserData();
@@ -275,7 +212,6 @@ const showInputField = ref(false);
 const aiInput = ref('');
 const editors = {};
 const isGenerating = ref(false);
-const isPinned = ref(false);
 const lastScrollY = ref(0);
 const navbarHeight = ref(60);
 const isNavbarVisible = ref(true);
@@ -286,7 +222,7 @@ const courseLessons = ref([]);
 const currentLessonId = ref(null);
 const defaultEditorType = ref('plain');
 const markdownContent = ref('');
-const richContent = ref('');
+const selectedBlockType = ref('');
 
 watch(course, (newCourse) => {
   if (newCourse) {
@@ -388,6 +324,7 @@ const addTableBlock = () => {
   lessonBlocks.value.push({
     type: 'table',
     rows: [['', ''], ['', '']],
+    hasHeader: true,
     id: Date.now() + Math.random()
   });
 };
@@ -413,40 +350,61 @@ const toggleVisibility = () => {
   visibility.value = !visibility.value;
 };
 
-const saveLesson = () => {
+const toggleLessonVisibility = (lesson) => {
+  lesson.visible = !lesson.visible;
+};
+
+const saveLesson = async (lesson) => {
+  if (!lesson) {
+    lesson = {
+      id: currentLessonId.value,
+      title: lectureTitle.value,
+      visible: visibility.value,
+      blocks: lessonBlocks.value
+    };
+  }
+
+  if(!lesson.blocks) {
+    lesson.blocks = lessonBlocks.value;
+  }
+  
   // Update content from editors before saving
   if (defaultEditorType.value === 'markdown') {
-    lessonBlocks.value = [{
+    // Extract title from markdown content if it exists
+    const titleMatch = markdownContent.value.match(/^# (.*?)(?:\n|$)/);
+    const extractedTitle = titleMatch ? titleMatch[1].trim() : lectureTitle.value;
+    
+    lesson.blocks = [{
       type: 'text',
       content: markdownContent.value,
       editorType: 'markdown',
       id: Date.now() + Math.random()
     }];
+    lesson.title = extractedTitle;
   } else {
-    lessonBlocks.value.forEach((block, index) => {
+    lesson.blocks.forEach((block, index) => {
       if (block.type === 'code' && editors[index]) {
         block.content = editors[index].getValue();
       }
     });
   }
-  const lectureId = route.query.id;
-  const method = lectureId ? 'patch' : 'post';
-  const url = lectureId ? `/api/lectures?id=${lectureId}` : '/api/lectures';
-  console.log(url);
-  axios[method](url, { 
-    course: course.value, 
-    blocks: lessonBlocks.value, 
-    title: lectureTitle.value,
-    visibility: visibility.value,
-    token: userData.value.token 
-  })
-    .then(() => {
-      navigateTo('/course');
-    })
-    .catch(error => {
-      console.error('Error saving lecture:', error);
-      alert('Failed to save lecture. Please try again.');
+  
+  const method = lesson.id ? 'patch' : 'post';
+  const url = lesson.id ? `/api/lectures?id=${lesson.id}` : '/api/lectures';
+  
+  try {
+    await axios[method](url, { 
+      course: course.value, 
+      blocks: lesson.blocks, 
+      title: lesson.title,
+      visibility: lesson.visible,
+      token: userData.value.token 
     });
+    navigateTo('/course');
+  } catch (error) {
+    console.error('Error saving lecture:', error);
+    alert('Failed to save lecture. Please try again.');
+  }
 };
 
 const openModal = (block, index) => {
@@ -469,25 +427,27 @@ const toggleInputField = () => {
 };
 
 const initMonacoEditor = (index, content) => {
-  const container = document.getElementById(`monaco-editor-${index}`);
-  if (!container) return;
+  nextTick(() => {
+    const container = document.getElementById(`monaco-editor-${index}`);
+    if (!container) return;
 
-  if (editors[index]) {
-    editors[index].dispose();
-  }
+    if (editors[index]) {
+      editors[index].dispose();
+    }
 
-  editors[index] = monaco.editor.create(container, {
-    value: content,
-    language: 'html',
-    theme: 'vs',
-    minimap: { enabled: false },
-    automaticLayout: true,
-    fontSize: 14,
-    lineNumbers: 'on',
-    roundedSelection: false,
-    scrollBeyondLastLine: false,
-    readOnly: false,
-    cursorStyle: 'line'
+    editors[index] = monaco.editor.create(container, {
+      value: content || '',
+      language: 'html',
+      theme: 'vs',
+      minimap: { enabled: false },
+      automaticLayout: true,
+      fontSize: 14,
+      lineNumbers: 'on',
+      roundedSelection: false,
+      scrollBeyondLastLine: false,
+      readOnly: false,
+      cursorStyle: 'line'
+    });
   });
 };
 
@@ -556,10 +516,6 @@ const handleScroll = () => {
   const currentScrollY = window.scrollY;
   isNavbarVisible.value = currentScrollY < navbarHeight.value;
   lastScrollY.value = currentScrollY;
-};
-
-const togglePin = () => {
-  isPinned.value = !isPinned.value;
 };
 
 const handleFileUpload = (event) => {
@@ -763,6 +719,10 @@ const loadLesson = async (lessonId) => {
     if (defaultEditorType.value === 'markdown') {
       const markdownBlock = lecture.blocks.find(block => block.type === 'text' && block.editorType === 'markdown');
       markdownContent.value = markdownBlock ? markdownBlock.content : '';
+      // Add title to markdown content if it exists
+      if (lecture.title) {
+        markdownContent.value = `# ${lecture.title}\n\n${markdownContent.value}`;
+      }
     } else {
       lessonBlocks.value = lecture.blocks.map(block => {
         if (block.type === 'text') {
@@ -805,11 +765,39 @@ const addMarkdownBlock = () => {
 };
 
 const handleEditorTypeChange = () => {
-  if (defaultEditorType.value === 'rich') {
-    nextTick(() => {
-      // Initialize rich editor if needed
-    });
+  // No need for rich editor initialization
+};
+
+const handleBlockTypeChange = () => {
+  if (!selectedBlockType.value) return;
+  
+  switch (selectedBlockType.value) {
+    case 'new':
+      createNewLesson();
+      break;
+    case 'test':
+      addTestBlock();
+      break;
+    default:
+      if (defaultEditorType.value !== 'markdown') {
+        switch (selectedBlockType.value) {
+          case 'text':
+            addTextBlock();
+            break;
+          case 'code':
+            addCodeBlock();
+            break;
+          case 'highlight':
+            addHighlightBlock();
+            break;
+          case 'table':
+            addTableBlock();
+            break;
+        }
+      }
   }
+  
+  selectedBlockType.value = '';
 };
 
 // Load lecture data if ID is present
@@ -939,19 +927,17 @@ onUnmounted(() => {
   display: flex;
   align-items: center;
   background: #f8f9fa;
-  padding: 0 10px;
-  height: 50px;
+  padding: 10px;
   gap: 15px;
 }
 
 .course-selector {
   min-width: 200px;
-  margin-right: 15px;
 }
 
 .course-selector .filter-input {
   width: 100%;
-  height: 30px;
+  height: 40px;
   padding: 0 10px;
   border: 1px solid #dee2e6;
   border-radius: 4px;
@@ -960,14 +946,12 @@ onUnmounted(() => {
 }
 
 .editor-type-selector {
-  margin-right: 15px;
   min-width: 150px;
-  position: relative;
 }
 
 .editor-type-selector .editor-type-select {
   width: 100%;
-  height: 30px;
+  height: 40px;
   padding: 0 10px;
   border: 1px solid #dee2e6;
   border-radius: 4px;
@@ -1137,23 +1121,23 @@ onUnmounted(() => {
 }
 
 .btn-danger {
-  background-color: #dc3545;
+  background-color: #BE3144;
   color: white;
   border: none;
 }
 
 .btn-danger:hover {
-  background-color: #c82333;
+  background-color: #a02a3a;
 }
 
 .btn-primary {
-  background-color: #007bff;
+  background-color: #09122C;
   color: white;
   border: none;
 }
 
 .btn-primary:hover {
-  background-color: #0056b3;
+  background-color: #0a1536;
 }
 
 .filter-input {
@@ -1168,7 +1152,7 @@ onUnmounted(() => {
   position: fixed;
   bottom: 20px;
   right: 20px;
-  background-color: #007bff;
+  background-color: #09122C;
   color: white;
   border: none;
   border-radius: 50%;
@@ -1185,7 +1169,7 @@ onUnmounted(() => {
 }
 
 .ai-generation-btn:hover {
-  background-color: #0056b3;
+  background-color: #0a1536;
 }
 
 .ai-input-container {
@@ -1223,7 +1207,7 @@ onUnmounted(() => {
 .generate-btn {
   width: 100%;
   padding: 10px;
-  background-color: #007bff;
+  background-color: #09122C;
   color: white;
   border: none;
   border-radius: 4px;
@@ -1236,12 +1220,12 @@ onUnmounted(() => {
 }
 
 .generate-btn:disabled {
-  background-color: #0056b3;
+  background-color: #0a1536;
   cursor: not-allowed;
 }
 
 .generate-btn:hover:not(:disabled) {
-  background-color: #0056b3;
+  background-color: #0a1536;
 }
 
 .loading {
@@ -1291,18 +1275,29 @@ onUnmounted(() => {
 }
 
 .visibility-off {
-  background-color: #dc3545 !important;
+  background-color: #BE3144 !important;
   color: white;
 }
 
 .visibility-off:hover {
-  background-color: #c82333 !important;
+  background-color: #a02a3a !important;
 }
 
 .action-btn {
+  background-color: #09122C;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  padding: 8px 16px;
+  cursor: pointer;
+  font-size: 14px;
   display: flex;
   align-items: center;
   gap: 8px;
+}
+
+.action-btn:hover {
+  background-color: #0a1536;
 }
 
 .highlight-block {
@@ -1398,83 +1393,141 @@ onUnmounted(() => {
   }
 }
 
-.lessons-tab {
-  background: white;
+.lessons-container {
+  padding: 20px;
+}
+
+.lesson-section {
+  margin-bottom: 30px;
+  border: 1px solid #dee2e6;
   border-radius: 8px;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-  margin-bottom: 20px;
   overflow: hidden;
 }
-.lessons-header {
+
+.lesson-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
   padding: 15px;
   background: #f8f9fa;
   border-bottom: 1px solid #dee2e6;
+  cursor: pointer;
 }
 
-.lessons-header h3 {
+.lesson-header h3 {
   margin: 0;
   font-size: 18px;
   color: #333;
 }
 
-.lessons-list {
-  max-height: 300px;
-  overflow-y: auto;
+.lesson-actions {
+  display: flex;
+  gap: 10px;
 }
 
-.lesson-item {
+.add-lesson-btn {
+  padding: 8px 16px;
+  background: #09122C;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.add-lesson-btn:hover {
+  background: #0a1536;
+}
+
+.tabs-container {
+  background: #f8f9fa;
+  border-bottom: 1px solid #dee2e6;
+  margin-bottom: 0;
+  position: sticky;
+  top: 60px;
+  z-index: 80;
+}
+
+.tabs-header {
+  display: flex;
+  align-items: center;
+  background: #f8f9fa;
+  padding: 10px;
+  gap: 15px;
+}
+
+.action-bar.hidden {
+  display: none;
+}
+
+.action-bar {
   display: flex;
   justify-content: space-between;
-  align-items: center;
-  padding: 12px 15px;
-  border-bottom: 1px solid #dee2e6;
-  cursor: pointer;
-  transition: background-color 0.2s;
-}
-
-.lesson-item:hover {
+  padding: 10px 20px;
   background-color: #f8f9fa;
+  border-bottom: 1px solid #dee2e6;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  position: sticky;
+  width: 100%;
+  z-index: 90;
+  transition: all 0.3s ease;
+  flex-wrap: nowrap;
+  top: 60px;
 }
 
-.lesson-title {
-  font-size: 14px;
-  color: #333;
-}
-
-.lesson-visibility {
-  font-size: 12px;
-  padding: 4px 8px;
-  border-radius: 4px;
-  background-color: #28a745;
-  color: white;
-}
-
-.lesson-visibility.hidden {
-  background-color: #dc3545;
-}
-
-.add-tab-btn {
+.action-bar-left {
   display: flex;
   align-items: center;
-  justify-content: center;
-  padding: 8px 12px;
-  background: #e9ecef;
-  border: 1px solid #dee2e6;
-  border-bottom: none;
-  border-radius: 6px 6px 0 0;
-  cursor: pointer;
-  min-width: 40px;
-  font-size: 20px;
-  color: #666;
-  transition: all 0.2s;
+  gap: 15px;
+  flex-shrink: 0;
 }
 
-.add-tab-btn:hover {
-  background: #f1f3f5;
+.action-bar-right {
+  display: flex;
+  gap: 10px;
+  flex-wrap: nowrap;
+  flex-shrink: 0;
+}
+
+.add-block-dropdown {
+  position: relative;
+}
+
+.add-block-dropdown select {
+  appearance: none;
+  background-color: #09122C;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  padding: 10px 16px;
+  cursor: pointer;
+  font-size: 14px;
+  min-width: 150px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+}
+
+.add-block-dropdown select:hover {
+  background-color: #0a1536;
+}
+
+.add-block-dropdown select:focus {
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.25);
+}
+
+.add-block-dropdown select option {
+  background-color: white;
   color: #333;
+  padding: 8px;
+}
+
+.add-block-dropdown select option:first-child {
+  color: #666;
 }
 
 .table-block {
@@ -1492,13 +1545,13 @@ onUnmounted(() => {
 }
 
 .btn-secondary {
-  background-color: #6c757d;
+  background-color: #09122C;
   color: white;
   border: none;
 }
 
 .btn-secondary:hover {
-  background-color: #5a6268;
+  background-color: #0a1536;
 }
 
 .table-container {
@@ -1540,16 +1593,9 @@ onUnmounted(() => {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 15px;
-  height: 100%;
+  height: calc(100vh - 200px);
   padding: 20px;
   background: white;
-}
-
-.markdown-header {
-  grid-column: 1 / -1;
-  display: flex;
-  justify-content: flex-start;
-  padding: 0 20px;
 }
 
 .markdown-input {
@@ -1557,6 +1603,8 @@ onUnmounted(() => {
   border-radius: 4px;
   overflow: hidden;
   height: 100%;
+  display: flex;
+  flex-direction: column;
 }
 
 .markdown-input textarea {
@@ -1569,6 +1617,7 @@ onUnmounted(() => {
   font-family: monospace;
   font-size: 14px;
   line-height: 1.6;
+  flex: 1;
 }
 
 .markdown-preview {
@@ -1654,39 +1703,34 @@ onUnmounted(() => {
 @media (max-width: 768px) {
   .markdown-editor {
     grid-template-columns: 1fr;
+    height: auto;
+  }
+  
+  .markdown-input, .markdown-preview {
+    height: 400px;
   }
 }
 
-.action-bar.hidden {
-  display: none;
-}
-
-.action-bar {
-  display: flex;
-  justify-content: space-between;
-  padding: 10px;
-  background-color: #f0f0f0;
-  border-bottom: 1px solid #ccc;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-  position: static;
-  width: 100%;
-  z-index: 90;
-  transition: all 0.3s ease;
-  flex-wrap: nowrap;
-}
-
-.action-bar-left {
+.header-toggle {
   display: flex;
   align-items: center;
-  gap: 15px;
-  flex-shrink: 0;
+  gap: 5px;
+  margin-right: 10px;
+  font-size: 14px;
+  color: #666;
 }
 
-.action-bar-right {
-  display: flex;
-  gap: 10px;
-  flex-wrap: nowrap;
-  flex-shrink: 0;
+.header-toggle input[type="checkbox"] {
+  margin: 0;
+}
+
+.header-row {
+  background-color: #f8f9fa;
+}
+
+.header-cell {
+  font-weight: bold;
+  background-color: #f8f9fa;
 }
 </style>
 

@@ -20,37 +20,9 @@ export default defineEventHandler(async (event) => {
     // Update the lecture title and visibility
     await event.context.$mysql.query(`
       UPDATE lectures 
-      SET title = ?, visible = ?
+      SET title = ?, content = ?, visible = ?
       WHERE id = ?
-    `, [title, visibility, id]);
-
-    // Delete existing exercises and tests for this lecture
-    await event.context.$mysql.query('DELETE FROM exercises WHERE lectureId = ?', [id]);
-    await event.context.$mysql.query('DELETE FROM tests WHERE lectureId = ?', [id]);
-
-    let content = '';
-    
-    // Recreate exercises and tests
-    for (const block of blocks) {
-      if (block.type === 'text') {
-        content += block.content + "\n";
-      } else if (block.type === 'code') {
-        const [exerciseResult, _] = await event.context.$mysql.query(`
-          INSERT INTO exercises (lectureId, description, code)
-          VALUES (?, ?, ?)
-        `, [id, block.description, block.content]);
-        const exerciseId = exerciseResult.insertId;
-        content += `\n@{${exerciseId}}\n`
-      } else if(block.type === 'test') {
-        await event.context.$mysql.query(`
-          INSERT INTO tests(lectureId, title, questions)
-          VALUES(?, ?, ?)
-        `, [id, block.title, JSON.stringify(block.questions)]);
-      }
-    }
-
-    // Update the lecture content
-    await event.context.$mysql.query('UPDATE lectures SET content = ? WHERE id = ?', [content, id]);
+    `, [title, JSON.stringify(blocks), visibility, id]);
 
     return { message: 'Lecture updated successfully!' };
 

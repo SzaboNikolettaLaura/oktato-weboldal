@@ -1,1 +1,66 @@
 @import "tailwindcss";
+
+/* Markdown Styles */
+h1 {
+  @apply text-4xl font-bold mb-6 mt-8;
+}
+
+h2 {
+  @apply text-3xl font-semibold mb-4 mt-6;
+}
+
+h3 {
+  @apply text-2xl font-semibold mb-3 mt-5;
+}
+
+p {
+  @apply mb-4 leading-relaxed;
+}
+
+ul, ol {
+  @apply mb-4 ml-6;
+}
+
+li {
+  @apply mb-2;
+}
+
+ul li {
+  @apply list-disc;
+}
+
+ol li {
+  @apply list-decimal;
+}
+
+blockquote {
+  @apply border-l-4 border-gray-300 pl-4 italic my-4;
+}
+
+code {
+  @apply bg-gray-100 px-1 py-0.5 rounded text-sm font-mono;
+}
+
+pre {
+  @apply bg-gray-100 p-4 rounded-lg overflow-x-auto my-4;
+}
+
+a {
+  @apply text-blue-600 hover:text-blue-800 underline;
+}
+
+img {
+  @apply max-w-full h-auto my-4 rounded-lg;
+}
+
+table {
+  @apply w-full border-collapse mb-4;
+}
+
+th, td {
+  @apply border border-gray-300 px-4 py-2;
+}
+
+th {
+  @apply bg-gray-100 font-semibold;
+}

@@ -24,31 +24,18 @@
 <script setup>
 import { ref, onMounted } from 'vue';
 import { useRoute } from 'vue-router';
+import { useTryCode } from '~/composables/useTryCode';
 
 const route = useRoute();
 const iframeSrc = ref('');
 const editor = ref('');
-const { courseData } = await useCourses();
+const { tryCode } = useTryCode();
 
-// Function to find exercise by ID
-function findExerciseById(exerciseId) {
-  for (const course of courseData.value) {
-    for (const lecture of course.lectures) {
-      const exercise = lecture.exercises.find(e => e.id === Number(exerciseId));
-      if (exercise) return exercise;
-    }
-  }
-  return null;
-}
-
-// Load exercise data when component mounts
+// Load content when component mounts
 onMounted(() => {
-  const exerciseId = route.query.exerciseId;
-  if (exerciseId) {
-    const exercise = findExerciseById(exerciseId);
-    if (exercise) {
-      editor.value = exercise.code || '';
-    }
+  if (tryCode.value) {
+    editor.value = tryCode.value;
+    tryCode.value = '';
   }
 });
 

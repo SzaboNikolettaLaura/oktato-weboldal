@@ -7,11 +7,11 @@ export default defineEventHandler(async (event) => {
     if(!user) {
       return sendError(event, new Error('Unauthorized'));
     }
-    const visibleQuery = user.role === 'tanar' ? '' : 'WHERE visible = 1';
+    const visibleQuery = user.role === 'tanar' ? '' : 'AND visible = 1';
     
     // Fetch all courses
     const [courses, __] = await event.context.$mysql.query(`
-      SELECT * FROM courses ${visibleQuery}
+      SELECT * FROM courses WHERE 1=1 ${visibleQuery}
     `);
 
     // Prepare an empty array to hold the result

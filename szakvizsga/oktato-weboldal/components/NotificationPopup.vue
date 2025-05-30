@@ -24,19 +24,24 @@
           
           <div v-if="expandedNotifications.includes(notification.id)" class="notification-details-content">
             <div class="notification-meta">
-              <span class="course-name">{{ notification.courseTitle }}</span>
-              <span v-if="notification.lectureTitle" class="lecture-name"> - {{ notification.lectureTitle }}</span>
+              <div class="course-lecture-info">
+                <span class="course-name">📚 {{ notification.course_title }}</span>
+                <span v-if="notification.lecture_title" class="lecture-name">📖 {{ notification.lecture_title }}</span>
+                <span v-else class="general-notification">🌐 Általános értesítés</span>
+              </div>
             </div>
             <div class="notification-content">
               <p>{{ notification.message }}</p>
               <div class="notification-details">
-                <span>Határidő: {{ formatDate(notification.deadline) }}</span>
-                <span>Státusz: {{ notification.status }}</span>
+                <span class="deadline-info">⏰ {{ formatDate(notification.deadline) }}</span>
+                <span class="status-info" :class="`status-${notification.status}`">
+                  {{ getStatusIcon(notification.status) }} {{ getStatusText(notification.status) }}
+                </span>
               </div>
             </div>
             <div class="notification-actions" v-if="userData.role === 'tanar'">
-              <button @click.stop="editNotification(notification)" class="edit-btn">Szerkesztés</button>
-              <button @click.stop="deleteNotification(notification.id)" class="delete-btn">Törlés</button>
+              <button @click.stop="editNotification(notification)" class="edit-btn">✏️ Szerkesztés</button>
+              <button @click.stop="deleteNotification(notification.id)" class="delete-btn">🗑️ Törlés</button>
             </div>
           </div>
         </div>
@@ -55,46 +60,70 @@
         <h3>{{ isEditing ? 'Értesítés szerkesztése' : 'Új értesítés küldése' }}</h3>
         <form @submit.prevent="submitNotification">
           <div class="form-group">
-            <label for="courseSelect">Kurzus</label>
+            <label for="courseSelect">
+              <span class="label-text">Kurzus</span>
+              <span class="required-asterisk">*</span>
+            </label>
             <select id="courseSelect" v-model="newNotification.courseId" required :disabled="isEditing">
-              <option :value="null">Válassz kurzust</option>
+              <option :value="null">🎓 Válassz kurzust...</option>
               <option v-for="course in courses" :key="course.id" :value="course.id">
                 {{ course.title }}
               </option>
             </select>
+            <small class="form-help">A kurzus, amelyhez az értesítés tartozik</small>
           </div>
           <div class="form-group">
-            <label for="lectureSelect">Lecke (opcionális)</label>
+            <label for="lectureSelect">
+              <span class="label-text">Lecke</span>
+              <span class="optional-text">(opcionális)</span>
+            </label>
             <select id="lectureSelect" v-model="newNotification.lectureId" :disabled="isEditing || !newNotification.courseId">
-              <option :value="null">Nincs lecke</option>
+              <option :value="null">📖 Nincs specifikus lecke</option>
               <option v-for="lecture in selectedCourseLectures" :key="lecture.id" :value="lecture.id">
                 {{ lecture.title }}
               </option>
             </select>
+            <small class="form-help">
+              {{ newNotification.courseId 
+                ? 'Válassz leckét, ha az értesítés egy konkrét leckéhez kapcsolódik' 
+                : 'Először válassz kurzust a leckék betöltéséhez' }}
+            </small>
           </div>
           <div class="form-group">
-            <label for="title">Cím</label>
-            <input type="text" id="title" v-model="newNotification.title" required>
+            <label for="title">
+              <span class="label-text">Cím</span>
+              <span class="required-asterisk">*</span>
+            </label>
+            <input type="text" id="title" v-model="newNotification.title" required placeholder="Például: Új feladat érkezett">
           </div>
           <div class="form-group">
-            <label for="message">Üzenet</label>
-            <textarea id="message" v-model="newNotification.message" required></textarea>
+            <label for="message">
+              <span class="label-text">Üzenet</span>
+              <span class="required-asterisk">*</span>
+            </label>
+            <textarea id="message" v-model="newNotification.message" required placeholder="Írd le az értesítés részleteit..."></textarea>
           </div>
           <div class="form-group">
-            <label for="deadline">Határidő</label>
+            <label for="deadline">
+              <span class="label-text">Határidő</span>
+              <span class="required-asterisk">*</span>
+            </label>
             <input type="datetime-local" id="deadline" v-model="newNotification.deadline" required>
+            <small class="form-help">Az értesítés lejárati dátuma és ideje</small>
           </div>
           <div class="form-group" v-if="isEditing">
-            <label for="status">Státusz</label>
+            <label for="status">
+              <span class="label-text">Státusz</span>
+            </label>
             <select id="status" v-model="newNotification.status">
-              <option value="active">Aktív</option>
-              <option value="completed">Befejezett</option>
-              <option value="cancelled">Törölt</option>
+              <option value="active">✅ Aktív</option>
+              <option value="completed">🎯 Befejezett</option>
+              <option value="cancelled">❌ Törölt</option>
             </select>
           </div>
           <div class="form-actions">
-            <button type="button" @click="closeForm">Mégse</button>
-            <button type="submit">{{ isEditing ? 'Mentés' : 'Küldés' }}</button>
+            <button type="button" @click="closeForm" class="btn-cancel">Mégse</button>
+            <button type="submit" class="btn-submit">{{ isEditing ? '💾 Mentés' : '📤 Küldés' }}</button>
           </div>
         </form>
       </div>
@@ -177,6 +206,24 @@ const resetForm = () => {
 
 const formatDate = (date) => {
   return new Date(date).toLocaleString('hu-HU');
+};
+
+const getStatusIcon = (status) => {
+  switch (status) {
+    case 'active': return '✅';
+    case 'completed': return '🎯';
+    case 'cancelled': return '❌';
+    default: return '❓';
+  }
+};
+
+const getStatusText = (status) => {
+  switch (status) {
+    case 'active': return 'Aktív';
+    case 'completed': return 'Befejezett';
+    case 'cancelled': return 'Törölt';
+    default: return 'Ismeretlen';
+  }
 };
 
 const fetchNotifications = async () => {
@@ -460,18 +507,71 @@ onMounted(async () => {
   gap: 4px;
 }
 
+.course-lecture-info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  width: 100%;
+}
+
 .course-name {
   color: #BE3144;
-  font-weight: 500;
+  font-weight: 600;
   background: rgba(190, 49, 68, 0.1);
-  padding: 2px 8px;
+  padding: 4px 8px;
   border-radius: 6px;
   font-size: 12px;
+  display: inline-block;
+  max-width: fit-content;
 }
 
 .lecture-name {
-  color: #495057;
+  color: #09122C;
   font-weight: 500;
+  background: rgba(9, 18, 44, 0.1);
+  padding: 4px 8px;
+  border-radius: 6px;
+  font-size: 12px;
+  display: inline-block;
+  max-width: fit-content;
+}
+
+.general-notification {
+  color: #6c757d;
+  font-weight: 400;
+  font-style: italic;
+  font-size: 11px;
+}
+
+.deadline-info {
+  background: #e7f3ff;
+  color: #0066cc;
+  padding: 4px 8px;
+  border-radius: 6px;
+  font-weight: 500;
+  font-size: 12px;
+}
+
+.status-info {
+  padding: 4px 8px;
+  border-radius: 6px;
+  font-weight: 500;
+  font-size: 12px;
+}
+
+.status-active {
+  background: #d4edda;
+  color: #155724;
+}
+
+.status-completed {
+  background: #d1ecf1;
+  color: #0c5460;
+}
+
+.status-cancelled {
+  background: #f8d7da;
+  color: #721c24;
 }
 
 .notification-content {
@@ -632,6 +732,32 @@ onMounted(async () => {
   font-size: 14px;
 }
 
+.label-text {
+  display: inline-block;
+  margin-right: 4px;
+}
+
+.required-asterisk {
+  color: #BE3144;
+  font-weight: 600;
+  margin-left: 2px;
+}
+
+.optional-text {
+  color: #6c757d;
+  font-weight: 400;
+  font-size: 12px;
+  margin-left: 4px;
+}
+
+.form-help {
+  display: block;
+  margin-top: 4px;
+  color: #6c757d;
+  font-size: 12px;
+  line-height: 1.4;
+}
+
 .form-group input,
 .form-group textarea,
 .form-group select {
@@ -687,26 +813,26 @@ onMounted(async () => {
   min-width: 100px;
 }
 
-.form-actions button[type="submit"] {
-  background: linear-gradient(135deg, #BE3144, #a82b3a);
-  color: white;
-  box-shadow: 0 4px 12px rgba(190, 49, 68, 0.2);
+.btn-cancel {
+  background: #f8f9fa !important;
+  color: #495057 !important;
+  border: 2px solid #e9ecef !important;
 }
 
-.form-actions button[type="submit"]:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 6px 16px rgba(190, 49, 68, 0.3);
+.btn-cancel:hover {
+  background: #e9ecef !important;
+  border-color: #dee2e6 !important;
 }
 
-.form-actions button[type="button"] {
-  background: #f8f9fa;
-  color: #495057;
-  border: 2px solid #e9ecef;
+.btn-submit {
+  background: linear-gradient(135deg, #BE3144, #a82b3a) !important;
+  color: white !important;
+  box-shadow: 0 4px 12px rgba(190, 49, 68, 0.2) !important;
 }
 
-.form-actions button[type="button"]:hover {
-  background: #e9ecef;
-  border-color: #dee2e6;
+.btn-submit:hover {
+  transform: translateY(-1px) !important;
+  box-shadow: 0 6px 16px rgba(190, 49, 68, 0.3) !important;
 }
 
 .filter-section {

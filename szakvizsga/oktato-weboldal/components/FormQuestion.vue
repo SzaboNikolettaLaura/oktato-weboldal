@@ -37,6 +37,14 @@
             placeholder="Válaszlehetőség"
             class="question-option"
           />
+          <button 
+            v-if="question.options.length > 2" 
+            @click="removeOption(optionIndex)" 
+            class="remove-option"
+            title="Válaszlehetőség törlése"
+          >
+            ×
+          </button>
         </div>
         <button @click="addOption" class="add-option">Válaszlehetőség hozzáadása</button>
       </div>
@@ -74,6 +82,9 @@
       },
       addOption() {
         this.question.options.push({ text: '', isCorrect: false });
+      },
+      removeOption(index) {
+        this.question.options.splice(index, 1);
       }
     }
   };
@@ -163,7 +174,7 @@
   }
   
   .add-option {
-    background-color: #28a745;
+    background-color: #09122C;
     color: white;
     border: none;
     padding: 8px 16px;
@@ -173,7 +184,7 @@
   }
   
   .add-option:hover {
-    background-color: #218838;
+    background-color: #061020;
   }
   
   .option-container {
@@ -192,6 +203,23 @@
     font-size: 16px;
     border: 1px solid #ccc;
     border-radius: 6px;
+  }
+  
+  .remove-option {
+    background-color: #BE3144;
+    color: white;
+    border: none;
+    padding: 4px 8px;
+    margin-left: 8px;
+    cursor: pointer;
+    border-radius: 4px;
+    font-size: 14px;
+    font-weight: bold;
+    transition: background-color 0.2s;
+  }
+  
+  .remove-option:hover {
+    background-color: #a02838;
   }
   </style>
   

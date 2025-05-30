@@ -22,9 +22,9 @@
           </svg>
         </div>
 
-        <div class="flex flex-row justify-between items-center flex-wrap mb-8">
+        <div class="flex flex-row justify-between items-center mb-8">
           <h2 class="sidebar-title">Courses</h2>
-          <div @click="router.push('/lessonedit')" v-if="userData.role === 'tanar'" class="add-lesson-btn rounded-full w-8 h-8 text-white flex items-center justify-center cursor-pointer p-4 m-4 bg-green-500"><span style="text-box-trim:trim-both;">+</span></div>
+          <div @click="router.push('/lessonedit')" v-if="userData.role === 'tanar'" class="add-lesson-btn"><span>+</span></div>
         </div>
         <div class="sidebar-content">
           <ol class="space-y-2" style="list-style-type: none;">
@@ -97,15 +97,16 @@
             </div>
             <div v-else-if="block.type === 'test'" class="test-box">
               <h3 class="test-title">{{ block.title }}</h3>
-              <div v-for="(question, qIndex) in block.questions" :key="qIndex">
-                <p class="question-text">{{ question.text }}</p>
-                <div v-if="question.type === 'multiple'">
-                  <div v-for="(option, oIndex) in question.options" :key="oIndex" class="option-item">
-                    <input type="radio" :name="'q' + qIndex" :value="oIndex" class="option-radio">
-                    <span class="option-text">{{ option }}</span>
-                  </div>
-                </div>
+              <p class="test-description">{{ block.questions.length }} kérdés</p>
+              <div class="test-preview">
+                <p class="preview-text">Kattintson a gombra a teszt megkezdéséhez</p>
               </div>
+              <button 
+                @click="router.push(`/test/${lecture.id}`)"
+                class="take-test-btn"
+              >
+                {{ userData.role === 'tanar' ? 'Teszt előnézet' : 'Teszt megkezdése' }}
+              </button>
             </div>
             <div v-else-if="block.type === 'highlight'" class="highlight-box">
               <div v-html="renderMarkdown(block.content)"></div>
@@ -337,6 +338,8 @@ async function toggleCourseVisibility(course) {
   margin-bottom: 20px;
   padding-bottom: 10px;
   border-bottom: 2px solid #872341;
+  flex: 1;
+  min-width: 0;
 }
 
 .sidebar-content {
@@ -513,66 +516,43 @@ async function toggleCourseVisibility(course) {
   margin-bottom: 16px;
 }
 
-.question-text {
+.test-description {
   color: #1f2937;
   margin-bottom: 12px;
   font-size: 16px;
   line-height: 1.5;
 }
 
-.option-item {
-  margin: 12px 0;
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 8px;
-  border-radius: 6px;
-  transition: all 0.2s;
-  min-height: 44px;
+.test-preview {
+  background-color: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 16px;
+  margin-bottom: 16px;
 }
 
-.option-item:hover {
-  background-color: rgba(22, 101, 52, 0.05);
-}
-
-.option-radio {
-  width: 20px;
-  height: 20px;
-  accent-color: #166534;
-}
-
-.option-text {
-  flex: 1;
-  font-size: 15px;
-}
-
-.add-lesson-btn {
-  background-color: #BE3144;
-  width: 44px;
-  height: 44px;
-  border-radius: 50%;
-  color: white;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 24px;
-  cursor: pointer;
-  transition: all 0.2s;
-  box-shadow: 0 2px 8px rgba(190, 49, 68, 0.3);
-  border: none;
-}
-
-.add-lesson-btn:hover {
-  background-color: #872341;
-  transform: scale(1.05);
-}
-
-.plain-text {
-  white-space: pre-wrap;
-  font-family: inherit;
-  line-height: 1.6;
+.preview-text {
   color: #1f2937;
   font-size: 16px;
+  line-height: 1.5;
+}
+
+.take-test-btn {
+  padding: 12px 24px;
+  background-color: #BE3144;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 16px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+  min-height: 48px;
+}
+
+.take-test-btn:hover {
+  background-color: #872341;
+  transform: translateY(-1px);
 }
 
 .highlight-box {
@@ -866,9 +846,10 @@ ol li ol {
   }
 
   .add-lesson-btn {
-    width: 40px;
-    height: 40px;
-    font-size: 20px;
+    width: 28px;
+    height: 28px;
+    font-size: 16px;
+    flex-shrink: 0;
   }
 }
 

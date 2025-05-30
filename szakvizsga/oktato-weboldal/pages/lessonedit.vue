@@ -199,9 +199,42 @@
     <TestBlockEditor
       v-if="isModalVisible"
       :block="currentTestBlock"
+      :courseId="course"
+      :token="userData.token"
       @save="saveBlockChanges"
       @close="closeModal"
     />
+
+    <!-- Context Menu -->
+    <div 
+      v-if="showContextMenuVisible" 
+      class="context-menu"
+      :style="{ left: contextMenuPosition.x + 'px', top: contextMenuPosition.y + 'px' }"
+      @click.stop
+    >
+      <div class="context-menu-item" @click="addBlockAtPosition('text')">
+        Szöveg blokk hozzáadása
+      </div>
+      <div class="context-menu-item" @click="addBlockAtPosition('code')">
+        Kód blokk hozzáadása
+      </div>
+      <div class="context-menu-item" @click="addBlockAtPosition('highlight')">
+        Kiemelés blokk hozzáadása
+      </div>
+      <div class="context-menu-item" @click="addBlockAtPosition('test')">
+        Teszt blokk hozzáadása
+      </div>
+      <div class="context-menu-item" @click="addBlockAtPosition('table')">
+        Táblázat blokk hozzáadása
+      </div>
+    </div>
+
+    <!-- Context menu overlay to hide menu when clicking outside -->
+    <div 
+      v-if="showContextMenuVisible" 
+      class="context-menu-overlay" 
+      @click="hideContextMenu"
+    ></div>
   </div>
 </template>
 
@@ -240,6 +273,9 @@ const defaultEditorType = ref('plain');
 const markdownContent = ref('');
 const selectedBlockType = ref('');
 const newCourseName = ref('');
+const showContextMenuVisible = ref(false);
+const contextMenuPosition = ref({ x: 0, y: 0 });
+const contextMenuInsertIndex = ref(0);
 
 watch(course, (newCourse) => {
   if (newCourse) {
@@ -809,6 +845,36 @@ const loadLesson = async (lessonId) => {
             initMonacoEditor(index, block.content);
           }
         });
+        
+        // Check if we should auto-open the test editor
+        const editTestData = sessionStorage.getItem('editTestData');
+        if (editTestData) {
+          try {
+            const testData = JSON.parse(editTestData);
+            if (testData.editTest) {
+              const testIndex = testData.testIndex || 0;
+              const testBlocks = lessonBlocks.value.filter(block => block.type === 'test');
+              
+              if (testBlocks[testIndex]) {
+                // Find the actual index of this test block in lessonBlocks
+                const blockIndex = lessonBlocks.value.findIndex(block => 
+                  block.type === 'test' && block === testBlocks[testIndex]
+                );
+                
+                if (blockIndex !== -1) {
+                  // Auto-open the test editor
+                  openModal(lessonBlocks.value[blockIndex], blockIndex);
+                  
+                  // Clear the sessionStorage data after using it
+                  sessionStorage.removeItem('editTestData');
+                }
+              }
+            }
+          } catch (error) {
+            console.error('Error parsing test data from sessionStorage:', error);
+            sessionStorage.removeItem('editTestData');
+          }
+        }
       });
     }
   } catch (error) {
@@ -869,6 +935,108 @@ const handleBlockTypeChange = () => {
   selectedBlockType.value = '';
 };
 
+const showContextMenu = (event) => {
+  event.preventDefault();
+  
+  // Only show context menu if not in markdown mode
+  if (defaultEditorType.value === 'markdown') {
+    return;
+  }
+  
+  showContextMenuVisible.value = true;
+  
+  // Improved positioning to avoid going off screen
+  const menuWidth = 200;
+  const menuHeight = 200; // approximate
+  const x = event.clientX + menuWidth > window.innerWidth 
+    ? event.clientX - menuWidth 
+    : event.clientX;
+  const y = event.clientY + menuHeight > window.innerHeight 
+    ? event.clientY - menuHeight 
+    : event.clientY;
+    
+  contextMenuPosition.value = { x, y };
+  
+  // Calculate insert position based on mouse position relative to blocks
+  const blocksContainer = document.querySelector('.blocks');
+  if (blocksContainer) {
+    const rect = blocksContainer.getBoundingClientRect();
+    const relativeY = event.clientY - rect.top;
+    
+    // Find which block the mouse is closest to
+    const blockElements = blocksContainer.querySelectorAll('.block');
+    let insertIndex = lessonBlocks.value.length;
+    
+    for (let i = 0; i < blockElements.length; i++) {
+      const blockRect = blockElements[i].getBoundingClientRect();
+      const blockRelativeY = blockRect.top - rect.top;
+      
+      if (relativeY < blockRelativeY + (blockRect.height / 2)) {
+        insertIndex = i;
+        break;
+      }
+    }
+    
+    contextMenuInsertIndex.value = insertIndex;
+  } else {
+    // If blocks container not found, insert at the end
+    contextMenuInsertIndex.value = lessonBlocks.value.length;
+  }
+};
+
+const hideContextMenu = () => {
+  showContextMenuVisible.value = false;
+};
+
+const handleKeydown = (event) => {
+  if (event.key === 'Escape') {
+    hideContextMenu();
+  }
+};
+
+const addBlockAtPosition = (blockType) => {
+  const newBlock = {
+    id: Date.now() + Math.random()
+  };
+  
+  switch (blockType) {
+    case 'text':
+      newBlock.type = 'text';
+      newBlock.content = '';
+      newBlock.editorType = defaultEditorType.value;
+      break;
+    case 'code':
+      newBlock.type = 'code';
+      newBlock.content = '';
+      newBlock.description = '';
+      break;
+    case 'highlight':
+      newBlock.type = 'highlight';
+      newBlock.content = '';
+      break;
+    case 'test':
+      newBlock.type = 'test';
+      newBlock.title = '';
+      newBlock.questions = [];
+      break;
+    case 'table':
+      newBlock.type = 'table';
+      newBlock.rows = [['', ''], ['', '']];
+      newBlock.hasHeader = true;
+      break;
+  }
+  
+  lessonBlocks.value.splice(contextMenuInsertIndex.value, 0, newBlock);
+  
+  if (blockType === 'code') {
+    nextTick(() => {
+      initMonacoEditor(contextMenuInsertIndex.value, '');
+    });
+  }
+  
+  hideContextMenu();
+};
+
 // Load lecture data if ID is present
 onMounted(async () => {
   const lectureId = route.query.id;
@@ -899,6 +1067,36 @@ onMounted(async () => {
             initMonacoEditor(index, block.content);
           }
         });
+        
+        // Check if we should auto-open the test editor
+        const editTestData = sessionStorage.getItem('editTestData');
+        if (editTestData) {
+          try {
+            const testData = JSON.parse(editTestData);
+            if (testData.editTest) {
+              const testIndex = testData.testIndex || 0;
+              const testBlocks = lessonBlocks.value.filter(block => block.type === 'test');
+              
+              if (testBlocks[testIndex]) {
+                // Find the actual index of this test block in lessonBlocks
+                const blockIndex = lessonBlocks.value.findIndex(block => 
+                  block.type === 'test' && block === testBlocks[testIndex]
+                );
+                
+                if (blockIndex !== -1) {
+                  // Auto-open the test editor
+                  openModal(lessonBlocks.value[blockIndex], blockIndex);
+                  
+                  // Clear the sessionStorage data after using it
+                  sessionStorage.removeItem('editTestData');
+                }
+              }
+            }
+          } catch (error) {
+            console.error('Error parsing test data from sessionStorage:', error);
+            sessionStorage.removeItem('editTestData');
+          }
+        }
       });
     } catch (error) {
       console.error('Error loading lecture:', error);
@@ -906,11 +1104,13 @@ onMounted(async () => {
     }
   }
   window.addEventListener('scroll', handleScroll);
+  window.addEventListener('keydown', handleKeydown);
 });
 
 // Clean up editors when component is unmounted
 onUnmounted(() => {
   window.removeEventListener('scroll', handleScroll);
+  window.removeEventListener('keydown', handleKeydown);
   Object.values(editors).forEach(editor => editor.dispose());
 });
 </script>
@@ -1843,6 +2043,43 @@ onUnmounted(() => {
 .new-course-input .filter-input:focus {
   border-color: #20c997;
   box-shadow: 0 0 0 3px rgba(40, 167, 69, 0.1);
+}
+
+.context-menu {
+  position: fixed;
+  background: white;
+  border: 1px solid #dee2e6;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  z-index: 2000;
+  min-width: 200px;
+  overflow: hidden;
+}
+
+.context-menu-item {
+  padding: 12px 16px;
+  cursor: pointer;
+  font-size: 14px;
+  color: #333;
+  border-bottom: 1px solid #f8f9fa;
+  transition: background-color 0.2s;
+}
+
+.context-menu-item:hover {
+  background-color: #f8f9fa;
+}
+
+.context-menu-item:last-child {
+  border-bottom: none;
+}
+
+.context-menu-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 1999;
 }
 </style>
 

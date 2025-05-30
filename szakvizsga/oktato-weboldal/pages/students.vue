@@ -33,8 +33,19 @@
         </div>
       </div>
   
+      <!-- Loading/Error States -->
+      <div v-if="!userData.loaded" class="loading-state">
+        Felhasználói adatok betöltése...
+      </div>
+      <div v-else-if="!userData.token" class="error-state">
+        Nincs érvényes tokened. Kérlek jelentkezz be újra.
+      </div>
+      <div v-else-if="!studentData || studentData.length === 0" class="no-data-state">
+        Nincsenek diákok betöltve. (Token: {{ userData.token ? 'Van' : 'Nincs' }})
+      </div>
+  
       <!-- Student Table -->
-      <table class="student-table">
+      <table v-else class="student-table">
         <thead>
           <tr>
             <th>Név</th>
@@ -72,7 +83,18 @@
   import { ref, computed } from 'vue';
   import Nav from '@/components/Nav.vue';
   
-  const { studentData } = await useStudents();
+  const { userData } = useUserData();
+  
+  // Wait for user data to be loaded and ensure we have a token
+  let studentData;
+  if (userData.value.loaded && userData.value.token) {
+    const { studentData: data } = await useStudents(userData.value.token);
+    studentData = data;
+  } else {
+    // If user is not loaded or no token, create empty ref
+    studentData = ref([]);
+  }
+  
   const { courseData } = await useCourses();
   
   const filters = ref({
@@ -83,6 +105,9 @@
   });
   
   const filteredStudents = computed(() => {
+    if (!studentData || !studentData.value || studentData.value.length === 0) {
+      return [];
+    }
     return studentData.value.filter(student => {
       const matchesName = `${student.first_name} ${student.last_name}`.toLowerCase().includes(filters.value.name.toLowerCase());
       const matchesYear = !filters.value.year || student.year === filters.value.year;
@@ -93,9 +118,18 @@
     });
   });
   
-  const years = computed(() => [...new Set(studentData.value.map(student => student.year).filter(Boolean))]);
-  const specializations = computed(() => [...new Set(studentData.value.map(student => student.specialization).filter(Boolean))]);
-  const groups = computed(() => [...new Set(studentData.value.map(student => student.group).filter(Boolean))]);
+  const years = computed(() => {
+    if (!studentData || !studentData.value) return [];
+    return [...new Set(studentData.value.map(student => student.year).filter(Boolean))];
+  });
+  const specializations = computed(() => {
+    if (!studentData || !studentData.value) return [];
+    return [...new Set(studentData.value.map(student => student.specialization).filter(Boolean))];
+  });
+  const groups = computed(() => {
+    if (!studentData || !studentData.value) return [];
+    return [...new Set(studentData.value.map(student => student.group).filter(Boolean))];
+  });
   
   const getLastLectureTitle = (lastLectureId) => {
     const course = courseData.value.find(course => course.lectures.some(lecture => lecture.id === lastLectureId));
@@ -171,5 +205,33 @@
   
   .text-green {
     color: green;
+  }
+
+  .loading-state,
+  .error-state,
+  .no-data-state {
+    text-align: center;
+    padding: 40px 20px;
+    margin: 20px;
+    border-radius: 8px;
+    font-size: 16px;
+  }
+
+  .loading-state {
+    background-color: #e7f3ff;
+    color: #0066cc;
+    border: 1px solid #b8d4f0;
+  }
+
+  .error-state {
+    background-color: #ffe6e6;
+    color: #cc0000;
+    border: 1px solid #ffb3b3;
+  }
+
+  .no-data-state {
+    background-color: #fff3cd;
+    color: #856404;
+    border: 1px solid #ffeaa7;
   }
   </style>

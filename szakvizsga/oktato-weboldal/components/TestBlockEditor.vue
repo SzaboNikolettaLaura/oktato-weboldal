@@ -69,7 +69,7 @@ export default {
     FormQuestion,
     draggable
   },
-  props: ['block', 'save', 'close'],
+  props: ['block', 'save', 'close', 'courseId', 'token'],
   data() {
     return {
       formTitle: this.block.title || '',
@@ -158,12 +158,39 @@ export default {
     removeQuestion(index) {
       this.questions.splice(index, 1);
     },
-    submitForm() {
-      const result = {
-        title: this.formTitle,
-        questions: this.questions
+    async submitForm() {
+      if (!this.formTitle || this.formTitle.trim() === '') {
+        alert('A teszt címe kötelező!');
+        return;
       }
-      this.$emit('save', result);
+      
+      if (!this.questions || this.questions.length === 0) {
+        alert('Legalább egy kérdés szükséges!');
+        return;
+      }
+      
+      const testBlock = {
+        type: 'test',
+        title: this.formTitle,
+        questions: this.questions,
+        id: Date.now() + Math.random()
+      };
+      
+      try {
+        const response = await axios.post('/api/lectures', {
+          course: this.courseId,
+          blocks: [testBlock],
+          title: this.formTitle,
+          visibility: true,
+          token: this.token
+        });
+        
+        alert('Teszt sikeresen mentve!');
+        this.$emit('close');
+      } catch (error) {
+        console.error('Error saving test:', error);
+        alert('Hiba történt a teszt mentése során. Kérlek próbáld újra.');
+      }
     },
     closeModal() {
       this.$emit('close');
@@ -253,7 +280,7 @@ h1 {
 .generate-btn {
   width: 100%;
   padding: 16px;
-  background-color: #28a745;
+  background-color: #09122C;
   color: white;
   border: none;
   border-radius: 8px;
@@ -266,7 +293,7 @@ h1 {
 }
 
 .generate-btn:disabled {
-  background-color: #218838;
+  background-color: #061020;
   cursor: not-allowed;
 }
 
@@ -327,13 +354,13 @@ button:hover {
 }
 
 .add-question {
-  background-color: #28a745;
+  background-color: #09122C;
   width: auto;
   margin-top: 15px;
 }
 
 .add-question:hover {
-  background-color: #218838;
+  background-color: #061020;
 }
 
 .form-actions {
@@ -343,20 +370,20 @@ button:hover {
 }
 
 .submit-form {
-  background-color: #28a745;
+  background-color: #09122C;
   flex-grow: 1;
   margin-right: 15px;
 }
 
 .submit-form:hover {
-  background-color: #218838;
+  background-color: #061020;
 }
 
 .close-modal {
-  background-color: #dc3545;
+  background-color: #BE3144;
 }
 
 .close-modal:hover {
-  background-color: #c82333;
+  background-color: #a02838;
 }
 </style>

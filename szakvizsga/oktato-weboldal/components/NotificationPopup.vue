@@ -149,7 +149,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, watch } from 'vue';
+import { ref, computed, onMounted, watch, onUnmounted } from 'vue';
 import { useRouter } from 'vue-router';
 import axios from 'axios';
 
@@ -369,8 +369,23 @@ const toggleNotification = (id) => {
   }
 };
 
+// Handle clicking outside the popup
+const handleClickOutside = (event) => {
+  const popup = event.target.closest('.notification-popup');
+  if (!popup) {
+    closePopup();
+  }
+};
+
 onMounted(async () => {
   await fetchNotifications();
+  // Add click outside listener
+  document.addEventListener('click', handleClickOutside);
+});
+
+// Clean up event listener on unmount
+onUnmounted(() => {
+  document.removeEventListener('click', handleClickOutside);
 });
 </script>
 

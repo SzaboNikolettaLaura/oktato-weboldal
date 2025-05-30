@@ -77,7 +77,7 @@
       </div>
     </div>
 
-    <div class="container relative w-full" style="max-width:unset;" @mouseup="handleTextSelection">
+    <div class="container relative w-full" style="max-width:unset;" @mouseup="handleTextSelection" @contextmenu="handleRightClick">
       <div class="sidebar" :class="{'closed': sidebarHidden}">
         <!-- Mobile close button -->
         <div class="mobile-close-btn" @click="toggleSidebar">
@@ -87,9 +87,9 @@
           </svg>
         </div>
 
-        <div class="flex flex-row justify-between items-center mb-8">
+        <div class="flex flex-row justify-between items-center mb-4 mt-20">
           <h2 class="sidebar-title">Courses</h2>
-          <div @click="router.push('/lessonedit')" v-if="userData.role === 'tanar'" class="add-lesson-btn"><span>+</span></div>
+          <div @click="router.push('/lessonedit')" v-if="userData.role === 'tanar'" class="add-lesson-btn mr-12 mt-4"><span>+</span></div>
         </div>
         <div class="sidebar-content">
           <ol class="space-y-2" style="list-style-type: none;">
@@ -460,6 +460,45 @@ function handleTextSelection(event) {
     
     showContextMenu.value = true;
   } else {
+    showContextMenu.value = false;
+  }
+}
+
+function handleRightClick(event) {
+  const selection = window.getSelection();
+  const text = selection.toString().trim();
+  
+  if (text.length > 0) {
+    // Prevent default context menu
+    event.preventDefault();
+    
+    selectedText.value = text;
+    
+    // Get context around the selection
+    const range = selection.getRangeAt(0);
+    const container = range.commonAncestorContainer;
+    let contextElement = container.nodeType === Node.TEXT_NODE ? container.parentElement : container;
+    
+    // Try to get more context from parent elements
+    while (contextElement && contextElement.textContent.length < 200) {
+      if (contextElement.parentElement) {
+        contextElement = contextElement.parentElement;
+      } else {
+        break;
+      }
+    }
+    
+    selectionContext.value = contextElement ? contextElement.textContent.trim() : text;
+    
+    // Position the context menu at right-click location
+    contextMenuPosition.value = {
+      x: Math.min(event.clientX + 10, window.innerWidth - 200),
+      y: Math.min(event.clientY + 10, window.innerHeight - 100)
+    };
+    
+    showContextMenu.value = true;
+  } else {
+    // If no text selected, allow default context menu
     showContextMenu.value = false;
   }
 }
@@ -856,8 +895,8 @@ async function generateSimilarTest() {
 }
 
 .test-box {
-  background-color: #f0fdf4;
-  border: 1px solid #86efac;
+  background-color: #f8fafc;
+  border: 1px solid #e2e8f0;
   border-radius: 12px;
   padding: 24px;
   margin: 20px 0;
@@ -866,7 +905,7 @@ async function generateSimilarTest() {
 .test-title {
   font-size: 18px;
   font-weight: 600;
-  color: #166534;
+  color: #374151;
   margin-bottom: 16px;
 }
 
@@ -1119,10 +1158,10 @@ ol li ol {
   .sidebar {
     position: fixed;
     left: 0;
-    top: 64px;
+    top: 0;
     bottom: 0;
     z-index: 50;
-    width: 280px;
+    width: 320px;
     transform: translateX(0);
     box-shadow: 2px 0 10px rgba(0, 0, 0, 0.1);
   }

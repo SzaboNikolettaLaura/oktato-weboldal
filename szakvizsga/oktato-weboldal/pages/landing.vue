@@ -4,7 +4,7 @@
     <main class="bg-white min-h-screen text-gray-900">
       <section class="relative bg-gradient-to-br from-[#96173C] to-[#7A1230] text-white py-32 px-8 text-center overflow-hidden">
         <div class="absolute inset-0 bg-[url('/grid.svg')] opacity-10"></div>
-        <div class="absolute inset-0 bg-gradient-to-b from-transparent to-black/20"></div>
+        <div class="absolute inset-0 bg-gradient-to-b from-transparent to-[#872341]/20"></div>
         <div class="max-w-4xl mx-auto relative">
           <h1 class="text-6xl font-extrabold mb-8 animate-fade-in">Tanulj JavaScriptet magyarul</h1>
           <p class="mt-6 text-4xl text-gray-200 font-light">Miért tanulj magyarul?</p>
@@ -29,7 +29,7 @@
             </li>
           </ul>
           <div class="mt-12">
-            <NuxtLink to="/register" class="inline-flex items-center gap-2 bg-white text-[#96173C] font-semibold px-8 py-4 rounded-full shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1">
+            <NuxtLink :to="buttonLink" class="inline-flex items-center gap-2 bg-white text-white font-semibold px-8 py-4 rounded-full shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1 no-underline">
               Kezdj el tanulni
               <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 8l4 4m0 0l-4 4m4-4H3"></path>
@@ -54,7 +54,7 @@
             <h2 class="text-5xl font-extrabold bg-gradient-to-r from-[#96173C] to-[#09122C] bg-clip-text text-transparent">Fejleszd a tudásod!</h2>
             <p class="text-xl text-gray-700 leading-relaxed">Próbálj ki különböző feladatokat, hogy fejleszd a JavaScript tudásodat! Interaktív gyakorlatok és valós életbeli példák segítségével gyorsan fejlődhetsz.</p>
             <div class="pt-4">
-              <NuxtLink to="/register" class="inline-flex items-center gap-2 bg-gradient-to-r from-[#96173C] to-[#09122C] text-white font-semibold px-8 py-4 rounded-full shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1">
+              <NuxtLink :to="buttonLink" class="inline-flex items-center gap-2 bg-gradient-to-r from-[#96173C] to-[#09122C] text-white font-semibold px-8 py-4 rounded-full shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1">
                 Feladatok kipróbálása
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 8l4 4m0 0l-4 4m4-4H3"></path>
@@ -71,7 +71,7 @@
             <h2 class="text-5xl font-extrabold bg-gradient-to-r from-[#96173C] to-[#09122C] bg-clip-text text-transparent">Teszt kitöltése</h2>
             <p class="text-xl text-gray-700 leading-relaxed">Indítsd el a tesztet, hogy ellenőrizd tudásodat JavaScript-ben! Részletes visszajelzést kapsz, és pontosan láthatod, mely területeken kell még fejlődnöd.</p>
             <div class="pt-4">
-              <NuxtLink to="/register" class="inline-flex items-center gap-2 bg-gradient-to-r from-[#96173C] to-[#09122C] text-white font-semibold px-8 py-4 rounded-full shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1">
+              <NuxtLink :to="buttonLink" class="inline-flex items-center gap-2 bg-gradient-to-r from-[#96173C] to-[#09122C] text-white font-semibold px-8 py-4 rounded-full shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1">
                 Teszt kitöltése
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 8l4 4m0 0l-4 4m4-4H3"></path>
@@ -99,6 +99,15 @@ export default {
     Nav,
     Footer,
   },
+  computed: {
+    buttonLink() {
+      const { $auth } = this;
+      if ($auth && $auth.loggedIn && ($auth.user.role === 'student' || $auth.user.role === 'teacher')) {
+        return '/course';
+      }
+      return '/login';
+    }
+  }
 };
 </script>
 

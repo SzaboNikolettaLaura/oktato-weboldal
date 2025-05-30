@@ -58,13 +58,24 @@
     <div v-if="showSendForm" class="notification-form-overlay">
       <div class="notification-form">
         <h3>{{ isEditing ? 'Értesítés szerkesztése' : 'Új értesítés küldése' }}</h3>
+        
+        <!-- Debug info for development -->
+        <div v-if="false" style="background: #f0f0f0; padding: 10px; margin-bottom: 20px; border-radius: 5px; font-size: 12px;">
+          <strong>Debug Info:</strong><br>
+          Courses loaded: {{ courses?.length || 0 }}<br>
+          Selected courseId: {{ newNotification.courseId }}<br>
+          Selected lectureId: {{ newNotification.lectureId }}<br>
+          Available lectures: {{ selectedCourseLectures.length }}<br>
+          Is editing: {{ isEditing }}
+        </div>
+        
         <form @submit.prevent="submitNotification">
           <div class="form-group">
             <label for="courseSelect">
               <span class="label-text">Kurzus</span>
               <span class="required-asterisk">*</span>
             </label>
-            <select id="courseSelect" v-model="newNotification.courseId" required :disabled="isEditing">
+            <select id="courseSelect" v-model="newNotification.courseId" required>
               <option :value="null">🎓 Válassz kurzust...</option>
               <option v-for="course in courses" :key="course.id" :value="course.id">
                 {{ course.title }}
@@ -77,7 +88,7 @@
               <span class="label-text">Lecke</span>
               <span class="optional-text">(opcionális)</span>
             </label>
-            <select id="lectureSelect" v-model="newNotification.lectureId" :disabled="isEditing || !newNotification.courseId">
+            <select id="lectureSelect" v-model="newNotification.lectureId" :disabled="!newNotification.courseId">
               <option :value="null">📖 Nincs specifikus lecke</option>
               <option v-for="lecture in selectedCourseLectures" :key="lecture.id" :value="lecture.id">
                 {{ lecture.title }}
@@ -108,8 +119,14 @@
               <span class="label-text">Határidő</span>
               <span class="required-asterisk">*</span>
             </label>
-            <input type="datetime-local" id="deadline" v-model="newNotification.deadline" required>
-            <small class="form-help">Az értesítés lejárati dátuma és ideje</small>
+            <input 
+              type="datetime-local" 
+              id="deadline" 
+              v-model="newNotification.deadline" 
+              :min="minDeadlineDate"
+              required
+            >
+            <small class="form-help">Az értesítés lejárati dátuma és ideje (minimum 24 óra múlva)</small>
           </div>
           <div class="form-group" v-if="isEditing">
             <label for="status">
@@ -160,27 +177,57 @@ const newNotification = ref({
   status: 'active'
 });
 
+// Calculate minimum date (24 hours from now)
+const minDeadlineDate = computed(() => {
+  const now = new Date();
+  const tomorrow = new Date(now.getTime() + (24 * 60 * 60 * 1000)); // Add 24 hours
+  // Format for datetime-local input (YYYY-MM-DDTHH:MM)
+  return tomorrow.toISOString().slice(0, 16);
+});
+
 const selectedCourseLectures = computed(() => {
-  if (!newNotification.value.courseId) return [];
+  if (!newNotification.value.courseId) {
+    console.log('No course selected');
+    return [];
+  }
   const course = courses.value.find(c => c.id === newNotification.value.courseId);
   console.log('Selected course in computed:', course);
-  if (!course) return [];
+  if (!course) {
+    console.log('Course not found in courses list');
+    return [];
+  }
   console.log('Course lectures:', course.lectures);
   return course.lectures || [];
 });
 
 // Watch for courseId changes
-watch(() => newNotification.value.courseId, (newCourseId) => {
-  console.log('Course ID changed:', newCourseId);
+watch(() => newNotification.value.courseId, (newCourseId, oldCourseId) => {
+  console.log('Course ID changed from', oldCourseId, 'to', newCourseId);
   console.log('Available courses:', courses.value);
+  
   if (newCourseId) {
     const course = courses.value.find(c => c.id === newCourseId);
     console.log('Selected course:', course);
     console.log('Available lectures:', course?.lectures);
+    
+    // Only reset lectureId if the course actually changed (not on initial load)
+    if (oldCourseId !== undefined && oldCourseId !== newCourseId) {
+      console.log('Resetting lecture selection due to course change');
+      newNotification.value.lectureId = null;
+    }
+  } else {
+    // No course selected, always reset lecture
+    newNotification.value.lectureId = null;
   }
-  // Reset lectureId when course changes
-  newNotification.value.lectureId = null;
 });
+
+// Watch for when courses are loaded to ensure proper initialization
+watch(() => courses.value, (newCourses) => {
+  console.log('Courses updated:', newCourses);
+  if (newCourses && newCourses.length > 0) {
+    console.log('Courses loaded successfully, count:', newCourses.length);
+  }
+}, { immediate: true });
 
 const closePopup = () => {
   emit('close');
@@ -241,6 +288,16 @@ const fetchNotifications = async () => {
 
 const submitNotification = async () => {
   try {
+    // Validate deadline is at least 24 hours from now
+    const now = new Date();
+    const selectedDeadline = new Date(newNotification.value.deadline);
+    const minDeadline = new Date(now.getTime() + (24 * 60 * 60 * 1000));
+    
+    if (selectedDeadline < minDeadline) {
+      alert('A határidő legalább 24 órával a jelenlegi időpont után kell, hogy legyen.');
+      return;
+    }
+    
     const url = isEditing.value 
       ? `/api/notifications/${newNotification.value.id}`
       : '/api/notifications';
@@ -270,7 +327,21 @@ const submitNotification = async () => {
 
 const editNotification = (notification) => {
   isEditing.value = true;
-  newNotification.value = { ...notification };
+  
+  // Map the notification data properly, handling different field names
+  newNotification.value = {
+    id: notification.id,
+    courseId: notification.courseId || notification.course_id,
+    lectureId: notification.lectureId || notification.lecture_id,
+    title: notification.title,
+    message: notification.message,
+    deadline: notification.deadline,
+    status: notification.status || 'active'
+  };
+  
+  console.log('Editing notification:', notification);
+  console.log('Mapped notification data:', newNotification.value);
+  
   showSendForm.value = true;
 };
 

@@ -107,31 +107,35 @@
             </div>
 
             <div class="test-navigation">
-              <button 
-                v-if="currentTestIndex > 0" 
-                @click="previousTest" 
-                class="nav-btn prev-btn"
-              >
-                ← Előző teszt
-              </button>
+              <button @click="router.back()" class="back-btn">← Vissza</button>
               
-              <button 
-                v-if="currentTestIndex < testBlocks.length - 1" 
-                @click="nextTest" 
-                class="nav-btn next-btn"
-              >
-                Következő teszt →
-              </button>
-              
-              <button 
-                v-if="currentTestIndex === testBlocks.length - 1" 
-                @click="submitTest" 
-                class="submit-btn"
-                :disabled="userData && userData.role === 'tanar' ? false : !allQuestionsAnswered"
-              >
-                {{ userData && userData.role === 'tanar' ? 'Vissza a szerkesztőhöz' : 
-                   hasCompletedTest ? 'Teszt újra beküldése' : 'Teszt beküldése' }}
-              </button>
+              <div class="nav-controls">
+                <button 
+                  v-if="currentTestIndex > 0" 
+                  @click="previousTest" 
+                  class="nav-btn prev-btn"
+                >
+                  ← Előző teszt
+                </button>
+                
+                <button 
+                  v-if="currentTestIndex < testBlocks.length - 1" 
+                  @click="nextTest" 
+                  class="nav-btn next-btn"
+                >
+                  Következő teszt →
+                </button>
+                
+                <button 
+                  v-if="currentTestIndex === testBlocks.length - 1" 
+                  @click="submitTest" 
+                  class="submit-btn"
+                  :disabled="userData && userData.role === 'tanar' ? false : !allQuestionsAnswered"
+                >
+                  {{ userData && userData.role === 'tanar' ? 'Vissza a szerkesztőhöz' : 
+                     hasCompletedTest ? 'Teszt újra beküldése' : 'Teszt beküldése' }}
+                </button>
+              </div>
             </div>
           </div>
         </div>
@@ -436,14 +440,14 @@ onMounted(() => {
 }
 
 .test-header h1 {
-  margin: 0 0 15px 0;
+  margin: 0 0 30px 0;
   color: #09122C;
   font-size: 28px;
 }
 
 .teacher-badge {
   display: inline-block;
-  background-color: #28a745;
+  background-color: #BE3144;
   color: white;
   padding: 8px 16px;
   border-radius: 20px;
@@ -453,7 +457,7 @@ onMounted(() => {
 
 .completion-badge {
   display: inline-block;
-  background-color: #17a2b8;
+  background-color: #09122C;
   color: white;
   padding: 8px 16px;
   border-radius: 20px;
@@ -504,7 +508,7 @@ onMounted(() => {
   padding: 25px;
   background: #f8f9fa;
   border-radius: 8px;
-  border-left: 4px solid #007bff;
+  border-left: 4px solid #09122C;
 }
 
 .question-header {
@@ -522,7 +526,7 @@ onMounted(() => {
 }
 
 .question-type {
-  background-color: #007bff;
+  background-color: #09122C;
   color: white;
   padding: 4px 12px;
   border-radius: 12px;
@@ -548,8 +552,8 @@ onMounted(() => {
 
 .text-input:focus {
   outline: none;
-  border-color: #007bff;
-  box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.1);
+  border-color: #09122C;
+  box-shadow: 0 0 0 3px rgba(9, 18, 44, 0.1);
 }
 
 .radio-answers, .checkbox-answers {
@@ -577,11 +581,11 @@ onMounted(() => {
 input[type="radio"], input[type="checkbox"] {
   width: 18px;
   height: 18px;
-  accent-color: #007bff;
+  accent-color: #09122C;
 }
 
 .correct-indicator {
-  color: #28a745;
+  color: #BE3144;
   font-weight: bold;
   font-size: 18px;
 }
@@ -593,6 +597,34 @@ input[type="radio"], input[type="checkbox"] {
   gap: 15px;
   padding-top: 30px;
   border-top: 1px solid #dee2e6;
+}
+
+.nav-controls {
+  display: flex;
+  gap: 15px;
+  align-items: center;
+}
+
+.submit-actions {
+  display: flex;
+  gap: 15px;
+  margin-left: auto;
+}
+
+.back-btn {
+  background-color: #09122C;
+  color: white;
+  border: none;
+  padding: 15px 30px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 16px;
+  font-weight: 600;
+  transition: background-color 0.2s;
+}
+
+.back-btn:hover {
+  background-color: #0a1536;
 }
 
 .nav-btn {
@@ -611,7 +643,7 @@ input[type="radio"], input[type="checkbox"] {
 }
 
 .submit-btn {
-  background-color: #28a745;
+  background-color: #BE3144;
   color: white;
   border: none;
   padding: 15px 30px;
@@ -620,11 +652,10 @@ input[type="radio"], input[type="checkbox"] {
   font-size: 16px;
   font-weight: 600;
   transition: background-color 0.2s;
-  margin-left: auto;
 }
 
 .submit-btn:hover:not(:disabled) {
-  background-color: #218838;
+  background-color: #a02a3a;
 }
 
 .submit-btn:disabled {
@@ -668,13 +699,13 @@ input[type="radio"], input[type="checkbox"] {
 }
 
 .test-summary-btn:hover {
-  border-color: #007bff;
+  border-color: #09122C;
   background-color: #f8f9fa;
 }
 
 .test-summary-btn.active {
-  border-color: #007bff;
-  background-color: #e7f3ff;
+  border-color: #09122C;
+  background-color: #e6e7ea;
 }
 
 .test-name {
@@ -691,7 +722,7 @@ input[type="radio"], input[type="checkbox"] {
 }
 
 .test-summary-btn.active .completion-status {
-  background-color: #007bff;
+  background-color: #09122C;
 }
 
 @keyframes spin {
@@ -724,7 +755,19 @@ input[type="radio"], input[type="checkbox"] {
     gap: 10px;
   }
   
-  .nav-btn, .submit-btn {
+  .nav-controls {
+    width: 100%;
+    flex-direction: column;
+    gap: 10px;
+  }
+  
+  .submit-actions {
+    width: 100%;
+    flex-direction: column;
+    margin-left: 0;
+  }
+  
+  .nav-btn, .submit-btn, .back-btn {
     width: 100%;
   }
 }

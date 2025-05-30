@@ -12,7 +12,72 @@
     <!-- Mobile overlay -->
     <div v-if="!sidebarHidden" class="mobile-overlay" @click="toggleSidebar"></div>
 
-    <div class="container relative w-full" style="max-width:unset;">
+    <!-- Text Selection Context Menu -->
+    <div v-if="showContextMenu" class="context-menu" :style="{ top: contextMenuPosition.y + 'px', left: contextMenuPosition.x + 'px' }">
+      <button @click="explainSelectedText" class="context-menu-btn">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="10"/>
+          <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/>
+          <line x1="12" y1="17" x2="12.01" y2="17"/>
+        </svg>
+        Magyarázat
+      </button>
+      <button @click="generateSimilarTest" class="context-menu-btn">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+          <polyline points="14,2 14,8 20,8"/>
+          <line x1="16" y1="13" x2="8" y2="13"/>
+          <line x1="16" y1="17" x2="8" y2="17"/>
+          <polyline points="10,9 9,9 8,9"/>
+        </svg>
+        Hasonló teszt
+      </button>
+    </div>
+
+    <!-- Floating Chat Button -->
+    <div class="chat-button" @click="toggleChat">
+      <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+      </svg>
+    </div>
+
+    <!-- Chat Modal -->
+    <div v-if="isChatOpen" class="chat-modal">
+      <div class="chat-header">
+        <h3>AI Asszisztens</h3>
+        <button @click="toggleChat" class="chat-close">
+          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg>
+        </button>
+      </div>
+      <div class="chat-messages" ref="chatMessagesRef">
+        <div v-for="(message, index) in chatMessages" :key="index" :class="['message', message.role]">
+          <div class="message-content" v-html="message.content"></div>
+        </div>
+        <div v-if="isLoading" class="message assistant">
+          <div class="message-content typing">AI válaszol...</div>
+        </div>
+      </div>
+      <div class="chat-input">
+        <input 
+          v-model="currentMessage" 
+          @keypress.enter="sendMessage"
+          placeholder="Kérdezz bármit a kurzusról..."
+          class="chat-input-field"
+          :disabled="isLoading"
+        />
+        <button @click="sendMessage" :disabled="isLoading || !currentMessage.trim()" class="chat-send">
+          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="22" y1="2" x2="11" y2="13"></line>
+            <polygon points="22,2 15,22 11,13 2,9 22,2"></polygon>
+          </svg>
+        </button>
+      </div>
+    </div>
+
+    <div class="container relative w-full" style="max-width:unset;" @mouseup="handleTextSelection">
       <div class="sidebar" :class="{'closed': sidebarHidden}">
         <!-- Mobile close button -->
         <div class="mobile-close-btn" @click="toggleSidebar">
@@ -65,7 +130,7 @@
       </div>
 
       <div class="main" :class="{'sidebar-open': !sidebarHidden}">
-        <div class="flex items-center gap-2 flex-wrap">
+        <div class="flex items-center gap-1 flex-wrap">
           <h1 class="main-title">{{ selectedCourse?.title }}</h1>
           <button 
             v-if="userData.role === 'tanar'"
@@ -163,7 +228,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue';
+import { ref, onMounted, nextTick } from 'vue';
 import { useRouter } from 'vue-router';
 import { marked } from 'marked';
 
@@ -177,6 +242,19 @@ const selectedCourse = ref(null);
 const sidebarHidden = ref(window.innerWidth <= 768); // Hide sidebar by default on mobile
 const courseTitle = ref('');
 
+// Chat related refs
+const isChatOpen = ref(false);
+const chatMessages = ref([]);
+const currentMessage = ref('');
+const isLoading = ref(false);
+const chatMessagesRef = ref(null);
+
+// Text selection refs
+const showContextMenu = ref(false);
+const contextMenuPosition = ref({ x: 0, y: 0 });
+const selectedText = ref('');
+const selectionContext = ref('');
+
 function renderMarkdown(content) {
   return marked(content);
 }
@@ -186,6 +264,13 @@ onMounted(() => {
   if (courses.value && courses.value.length > 0) {
     selectCourse(0, 0);
   }
+  
+  // Hide context menu when clicking elsewhere
+  document.addEventListener('click', (event) => {
+    if (!event.target.closest('.context-menu')) {
+      showContextMenu.value = false;
+    }
+  });
 });
 
 function selectCourse(courseIndex, lectureIndex) {
@@ -260,6 +345,273 @@ async function toggleCourseVisibility(course) {
     console.error('Error toggling course visibility:', error);
     alert('An error occurred while updating course visibility.');
   }
+}
+
+// Chat functions
+function toggleChat() {
+  isChatOpen.value = !isChatOpen.value;
+  if (isChatOpen.value && chatMessages.value.length === 0) {
+    chatMessages.value.push({
+      role: 'assistant',
+      content: `Szia! Én vagyok az AI asszisztensed. Segíthetek a kurzus tartalmával kapcsolatos kérdésekben.<br><br><strong>💡 Új funkció:</strong> Jelölj ki bármilyen szöveget az oldalon, és megjelenik egy menü két opcióval:<br>• <strong>Magyarázat</strong> - Részletes magyarázatot kapsz a kijelölt szövegről<br>• <strong>Hasonló teszt</strong> - Generálok hasonló teszt kérdéseket<br><br>Miben segíthetek?`
+    });
+  }
+}
+
+async function sendMessage() {
+  if (!currentMessage.value.trim() || isLoading.value) return;
+
+  const userMessage = currentMessage.value.trim();
+  chatMessages.value.push({
+    role: 'user',
+    content: userMessage
+  });
+
+  currentMessage.value = '';
+  isLoading.value = true;
+
+  try {
+    const courseContext = selectedCourse.value ? {
+      title: selectedCourse.value.title,
+      lectures: selectedCourse.value.lectures.map(lecture => ({
+        title: lecture.title,
+        content: lecture.blocks.map(block => {
+          if (block.type === 'text') return block.content;
+          if (block.type === 'code') return `Code exercise: ${block.description}`;
+          if (block.type === 'test') return `Test: ${block.title}`;
+          if (block.type === 'highlight') return block.content;
+          return '';
+        }).join(' ')
+      }))
+    } : null;
+
+    const response = await fetch('/api/chat', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        message: userMessage,
+        context: courseContext,
+        token: userData.value.token
+      }),
+    });
+
+    if (response.ok) {
+      const data = await response.json();
+      chatMessages.value.push({
+        role: 'assistant',
+        content: data.response
+      });
+    } else {
+      chatMessages.value.push({
+        role: 'assistant',
+        content: 'Sajnálom, hiba történt. Kérlek, próbáld újra.'
+      });
+    }
+  } catch (error) {
+    console.error('Error sending message:', error);
+    chatMessages.value.push({
+      role: 'assistant',
+      content: 'Sajnálom, hiba történt. Kérlek, próbáld újra.'
+    });
+  } finally {
+    isLoading.value = false;
+    await nextTick();
+    scrollToBottom();
+  }
+}
+
+function scrollToBottom() {
+  if (chatMessagesRef.value) {
+    chatMessagesRef.value.scrollTop = chatMessagesRef.value.scrollHeight;
+  }
+}
+
+// Text selection functions
+function handleTextSelection(event) {
+  const selection = window.getSelection();
+  const text = selection.toString().trim();
+  
+  if (text.length > 0) {
+    selectedText.value = text;
+    
+    // Get context around the selection
+    const range = selection.getRangeAt(0);
+    const container = range.commonAncestorContainer;
+    let contextElement = container.nodeType === Node.TEXT_NODE ? container.parentElement : container;
+    
+    // Try to get more context from parent elements
+    while (contextElement && contextElement.textContent.length < 200) {
+      if (contextElement.parentElement) {
+        contextElement = contextElement.parentElement;
+      } else {
+        break;
+      }
+    }
+    
+    selectionContext.value = contextElement ? contextElement.textContent.trim() : text;
+    
+    // Position the context menu
+    contextMenuPosition.value = {
+      x: Math.min(event.clientX + 10, window.innerWidth - 200),
+      y: Math.min(event.clientY + 10, window.innerHeight - 100)
+    };
+    
+    showContextMenu.value = true;
+  } else {
+    showContextMenu.value = false;
+  }
+}
+
+async function explainSelectedText() {
+  if (!selectedText.value) return;
+  
+  showContextMenu.value = false;
+  
+  // Open chat if not already open
+  if (!isChatOpen.value) {
+    toggleChat();
+  }
+  
+  // Add user message
+  chatMessages.value.push({
+    role: 'user',
+    content: `Magyarázd el: "${selectedText.value}"`
+  });
+  
+  isLoading.value = true;
+  
+  try {
+    const courseContext = selectedCourse.value ? {
+      title: selectedCourse.value.title,
+      lectures: selectedCourse.value.lectures.map(lecture => ({
+        title: lecture.title,
+        content: lecture.blocks.map(block => {
+          if (block.type === 'text') return block.content;
+          if (block.type === 'code') return `Code exercise: ${block.description}`;
+          if (block.type === 'test') return `Test: ${block.title}`;
+          if (block.type === 'highlight') return block.content;
+          return '';
+        }).join(' ')
+      }))
+    } : null;
+
+    const response = await fetch('/api/chat', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        message: selectedText.value,
+        context: courseContext,
+        selectionContext: selectionContext.value,
+        action: 'explain',
+        token: userData.value.token
+      }),
+    });
+
+    if (response.ok) {
+      const data = await response.json();
+      chatMessages.value.push({
+        role: 'assistant',
+        content: data.response
+      });
+    } else {
+      chatMessages.value.push({
+        role: 'assistant',
+        content: 'Sajnálom, hiba történt. Kérlek, próbáld újra.'
+      });
+    }
+  } catch (error) {
+    console.error('Error explaining text:', error);
+    chatMessages.value.push({
+      role: 'assistant',
+      content: 'Sajnálom, hiba történt. Kérlek, próbáld újra.'
+    });
+  } finally {
+    isLoading.value = false;
+    await nextTick();
+    scrollToBottom();
+  }
+  
+  // Clear selection
+  window.getSelection().removeAllRanges();
+}
+
+async function generateSimilarTest() {
+  if (!selectedText.value) return;
+  
+  showContextMenu.value = false;
+  
+  // Open chat if not already open
+  if (!isChatOpen.value) {
+    toggleChat();
+  }
+  
+  // Add user message
+  chatMessages.value.push({
+    role: 'user',
+    content: `Generálj hasonló tesztet ehhez: "${selectedText.value}"`
+  });
+  
+  isLoading.value = true;
+  
+  try {
+    const courseContext = selectedCourse.value ? {
+      title: selectedCourse.value.title,
+      lectures: selectedCourse.value.lectures.map(lecture => ({
+        title: lecture.title,
+        content: lecture.blocks.map(block => {
+          if (block.type === 'text') return block.content;
+          if (block.type === 'code') return `Code exercise: ${block.description}`;
+          if (block.type === 'test') return `Test: ${block.title}`;
+          if (block.type === 'highlight') return block.content;
+          return '';
+        }).join(' ')
+      }))
+    } : null;
+
+    const response = await fetch('/api/chat', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        message: selectedText.value,
+        context: courseContext,
+        selectionContext: selectionContext.value,
+        action: 'generate_test',
+        token: userData.value.token
+      }),
+    });
+
+    if (response.ok) {
+      const data = await response.json();
+      chatMessages.value.push({
+        role: 'assistant',
+        content: data.response
+      });
+    } else {
+      chatMessages.value.push({
+        role: 'assistant',
+        content: 'Sajnálom, hiba történt. Kérlek, próbáld újra.'
+      });
+    }
+  } catch (error) {
+    console.error('Error generating test:', error);
+    chatMessages.value.push({
+      role: 'assistant',
+      content: 'Sajnálom, hiba történt. Kérlek, próbáld újra.'
+    });
+  } finally {
+    isLoading.value = false;
+    await nextTick();
+    scrollToBottom();
+  }
+  
+  // Clear selection
+  window.getSelection().removeAllRanges();
 }
 </script>
 
@@ -411,10 +763,12 @@ async function toggleCourseVisibility(course) {
 
 .visibility-on {
   color: #BE3144;
+  background-color: transparent;
 }
 
 .visibility-off {
   color: #872341;
+  background-color: transparent;
 }
 
 .visibility-btn:hover {
@@ -716,6 +1070,34 @@ ol li ol {
   padding-left: 2em;
 }
 
+/* Add lesson button */
+.add-lesson-btn {
+  width: 36px;
+  height: 36px;
+  background-color: #BE3144;
+  color: white;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-size: 20px;
+  font-weight: 600;
+  border: none;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.add-lesson-btn:hover {
+  background-color: #872341;
+  transform: scale(1.1);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+}
+
+.add-lesson-btn span {
+  line-height: 1;
+}
+
 /* Mobile responsive styles */
 @media (max-width: 768px) {
   .mobile-menu-btn {
@@ -881,5 +1263,250 @@ ol li ol {
     padding: 6px 8px;
     font-size: 13px;
   }
+}
+
+/* Chat Button Styles */
+.chat-button {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  width: 60px;
+  height: 60px;
+  background-color: #BE3144;
+  color: white;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  box-shadow: 0 4px 12px rgba(190, 49, 68, 0.3);
+  transition: all 0.3s ease;
+  z-index: 40;
+}
+
+.chat-button:hover {
+  background-color: #872341;
+  transform: scale(1.1);
+  box-shadow: 0 6px 20px rgba(190, 49, 68, 0.4);
+}
+
+/* Chat Modal Styles */
+.chat-modal {
+  position: fixed;
+  bottom: 100px;
+  right: 24px;
+  width: 400px;
+  height: 500px;
+  background-color: white;
+  border-radius: 16px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
+  display: flex;
+  flex-direction: column;
+  z-index: 45;
+  overflow: hidden;
+}
+
+.chat-header {
+  background-color: #BE3144;
+  color: white;
+  padding: 16px 20px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.chat-header h3 {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.chat-close {
+  background: none;
+  border: none;
+  color: white;
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 4px;
+  transition: background-color 0.2s;
+}
+
+.chat-close:hover {
+  background-color: rgba(255, 255, 255, 0.2);
+}
+
+.chat-messages {
+  flex: 1;
+  padding: 16px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.message {
+  display: flex;
+  margin-bottom: 8px;
+}
+
+.message.user {
+  justify-content: flex-end;
+}
+
+.message.assistant {
+  justify-content: flex-start;
+}
+
+.message-content {
+  max-width: 80%;
+  padding: 12px 16px;
+  border-radius: 16px;
+  font-size: 14px;
+  line-height: 1.4;
+}
+
+.message.user .message-content {
+  background-color: #BE3144;
+  color: white;
+  border-bottom-right-radius: 4px;
+}
+
+.message.assistant .message-content {
+  background-color: #f1f5f9;
+  color: #2d3748;
+  border-bottom-left-radius: 4px;
+}
+
+.typing {
+  font-style: italic;
+  color: #64748b !important;
+}
+
+.chat-input {
+  padding: 16px;
+  border-top: 1px solid #e2e8f0;
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.chat-input-field {
+  flex: 1;
+  padding: 12px 16px;
+  border: 1px solid #e2e8f0;
+  border-radius: 24px;
+  font-size: 14px;
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+.chat-input-field:focus {
+  border-color: #BE3144;
+}
+
+.chat-input-field:disabled {
+  background-color: #f8fafc;
+  color: #94a3b8;
+}
+
+.chat-send {
+  width: 40px;
+  height: 40px;
+  background-color: #BE3144;
+  color: white;
+  border: none;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.chat-send:hover:not(:disabled) {
+  background-color: #872341;
+  transform: scale(1.05);
+}
+
+.chat-send:disabled {
+  background-color: #94a3b8;
+  cursor: not-allowed;
+  transform: none;
+}
+
+/* Mobile responsive styles for chat */
+@media (max-width: 768px) {
+  .chat-button {
+    bottom: 20px;
+    right: 20px;
+    width: 56px;
+    height: 56px;
+  }
+
+  .chat-modal {
+    bottom: 90px;
+    right: 20px;
+    left: 20px;
+    width: auto;
+    height: 400px;
+  }
+}
+
+@media (max-width: 480px) {
+  .chat-modal {
+    bottom: 90px;
+    right: 16px;
+    left: 16px;
+    height: 350px;
+  }
+
+  .chat-button {
+    bottom: 16px;
+    right: 16px;
+    width: 52px;
+    height: 52px;
+  }
+}
+
+/* Context Menu Styles */
+.context-menu {
+  position: fixed;
+  background-color: white;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  padding: 8px;
+  z-index: 55;
+  min-width: 180px;
+  border: 1px solid #e2e8f0;
+}
+
+.context-menu-btn {
+  width: 100%;
+  padding: 12px 16px;
+  background: none;
+  border: none;
+  text-align: left;
+  cursor: pointer;
+  border-radius: 6px;
+  transition: background-color 0.2s;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 14px;
+  color: #374151;
+}
+
+.context-menu-btn:hover {
+  background-color: #f3f4f6;
+  color: #BE3144;
+}
+
+.context-menu-btn svg {
+  flex-shrink: 0;
+  color: #6b7280;
+}
+
+.context-menu-btn:hover svg {
+  color: #BE3144;
 }
 </style>

@@ -372,7 +372,8 @@ const toggleNotification = (id) => {
 // Handle clicking outside the popup
 const handleClickOutside = (event) => {
   const popup = event.target.closest('.notification-popup');
-  if (!popup) {
+  const button = event.target.closest('#notifications-button');
+  if (!popup && !button) {
     closePopup();
   }
 };

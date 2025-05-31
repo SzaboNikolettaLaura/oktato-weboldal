@@ -35,14 +35,29 @@ export default defineEventHandler(async (event) => {
             WHERE role = 'diak'
         `);
 
+        const [lectures] = await event.context.$mysql.query(`
+            SELECT id, title
+            FROM lectures
+        `);
+
         // Add default values for now
         for (let student of students) {
-            student.lastLecture = null;
+            const [completions] = await event.context.$mysql.query(`
+                SELECT lectureId, completedAt, answers
+                FROM completions 
+                WHERE studentId = ?
+                ORDER BY completedAt DESC
+            `, [student.id]);
+
+            student.lastLecture = completions[0]?.lectureId || null;
             student.completionStats = {
-                totalCompletions: 0,
-                uniqueLectures: 0,
-                lastLectureTitle: 'N/A',
-                detailedCompletions: []
+                totalCompletions: completions.length,
+                uniqueLectures: new Set(completions.map((c: any) => c.lectureId)).size,
+                lastLectureTitle: lectures.find((l: any) => l.id === completions[0]?.lectureId)?.title || 'N/A',
+                detailedCompletions: completions.map((c: any) => ({
+                    lectureId: c.lectureId,
+                    completedAt: c.completedAt
+                }))
             };
         }
        

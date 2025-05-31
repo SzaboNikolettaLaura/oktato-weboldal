@@ -69,7 +69,7 @@
             <td>{{ student.specialization }}</td>
             <td>
               <span :class="getLectureClass(student.lastLecture)">
-                {{ getLastLectureTitle(student.lastLecture) }}
+                {{ student.completionStats.lastLectureTitle }}
               </span>
             </td>
             <td>{{ student.initialScore }}</td>

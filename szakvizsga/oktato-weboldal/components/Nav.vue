@@ -19,7 +19,7 @@
       </li>
 
       <li v-if="isLoggedIn"><NuxtLink to="/course">Lecke</NuxtLink></li>
-      <li v-if="isLoggedIn">
+      <li v-if="isLoggedIn" id="notifications-button">
         <span class="nav-link" @click="toggleNotifications">
           Értesítések
           <span v-if="unreadCount" class="notification-badge">{{ unreadCount }}</span>
@@ -35,7 +35,7 @@
     <NotificationPopup 
       v-if="isLoggedIn"
       :is-visible="showNotifications"
-      @close="showNotifications = false"
+      @close="() => showNotifications = false"
     />
   </nav>
 </template>
@@ -73,6 +73,7 @@ const toggleMenu = () => {
 
 const toggleNotifications = () => {
   showNotifications.value = !showNotifications.value;
+  console.log(showNotifications.value)
 };
 
 const checkMobile = () => {

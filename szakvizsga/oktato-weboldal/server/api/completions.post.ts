@@ -18,7 +18,7 @@ export default defineEventHandler(async (event) => {
     }
 
     const studentId = user.id;
-    const completedAt = new Date().toISOString();
+    const completedAt = new Date();
 
     // Check if completion already exists for this student and lecture
     const [existingRows] = await event.context.$mysql.query(`

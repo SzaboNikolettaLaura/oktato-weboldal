@@ -33,19 +33,34 @@
           <div class="form-group">
             <label>Szak</label>
             <select v-model="profile.specialization" :disabled="!editing">
-              <option>Informatika</option>
+              <option value="">Válassz szakot</option>
+              <option value="Informatika">Informatika</option>
+              <option value="Villamosmérnöki">Villamosmérnöki</option>
+              <option value="Gépészmérnöki">Gépészmérnöki</option>
+              <option value="Építészmérnöki">Építészmérnöki</option>
+              <option value="Közgazdaságtan">Közgazdaságtan</option>
             </select>
           </div>
           <div class="form-group">
             <label>Évfolyam</label>
             <select v-model="profile.year" :disabled="!editing">
+              <option value="">Válassz évfolyamot</option>
+              <option value="1">I</option>
               <option value="2">II</option>
+              <option value="3">III</option>
+              <option value="4">IV</option>
+              <option value="5">V</option>
             </select>
           </div>
           <div class="form-group">
             <label>Csoport</label>
             <select v-model="profile.group" :disabled="!editing">
-              <option>A</option>
+              <option value="">Válassz csoportot</option>
+              <option value="A">A</option>
+              <option value="B">B</option>
+              <option value="C">C</option>
+              <option value="D">D</option>
+              <option value="E">E</option>
             </select>
           </div>
         </div>

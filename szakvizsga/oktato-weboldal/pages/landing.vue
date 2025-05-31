@@ -102,7 +102,7 @@ export default {
   computed: {
     buttonLink() {
       const { $auth } = this;
-      if ($auth && $auth.loggedIn && ($auth.user.role === 'student' || $auth.user.role === 'teacher')) {
+      if ($auth && $auth.loggedIn) {
         return '/course';
       }
       return '/login';

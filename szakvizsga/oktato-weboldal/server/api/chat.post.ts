@@ -27,10 +27,8 @@ export default defineEventHandler(async (event) => {
     selectionContext?: string; 
   } = body;
 
-  // Verify token
-  try {
-    jwt.verify(token, process.env.JWT_SECRET || 'fallback-secret');
-  } catch (error) {
+  const user = event.context.$readUserToken(token);
+  if (!user) {
     return sendError(event, new Error('Unauthorized'));
   }
 

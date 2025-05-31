@@ -54,7 +54,7 @@
       </div>
       <div class="chat-messages" ref="chatMessagesRef">
         <div v-for="(message, index) in chatMessages" :key="index" :class="['message', message.role]">
-          <div class="message-content" v-html="message.content"></div>
+          <div class="message-content" style="white-space: pre-wrap;">{{ message.content }}</div>
         </div>
         <div v-if="isLoading" class="message assistant">
           <div class="message-content typing">AI válaszol...</div>
@@ -87,7 +87,7 @@
           </svg>
         </div>
 
-        <div class="flex flex-row justify-between items-center mb-4 mt-20">
+        <div class="flex flex-row justify-between items-center mb-4 mt-8">
           <h2 class="sidebar-title">Courses</h2>
           <div @click="router.push('/lessonedit')" v-if="userData.role === 'tanar'" class="add-lesson-btn mr-12 mt-4"><span>+</span></div>
         </div>
@@ -353,7 +353,13 @@ function toggleChat() {
   if (isChatOpen.value && chatMessages.value.length === 0) {
     chatMessages.value.push({
       role: 'assistant',
-      content: `Szia! Én vagyok az AI asszisztensed. Segíthetek a kurzus tartalmával kapcsolatos kérdésekben.<br><br><strong>💡 Új funkció:</strong> Jelölj ki bármilyen szöveget az oldalon, és megjelenik egy menü két opcióval:<br>• <strong>Magyarázat</strong> - Részletes magyarázatot kapsz a kijelölt szövegről<br>• <strong>Hasonló teszt</strong> - Generálok hasonló teszt kérdéseket<br><br>Miben segíthetek?`
+      content: `Szia! Én vagyok az AI asszisztensed. Segíthetek a kurzus tartalmával kapcsolatos kérdésekben.
+
+💡 Új funkció: Jelölj ki bármilyen szöveget az oldalon, és megjelenik egy menü két opcióval:
+• Magyarázat - Részletes magyarázatot kapsz a kijelölt szövegről
+• Hasonló teszt - Generálok hasonló teszt kérdéseket
+
+Miben segíthetek?`
     });
   }
 }

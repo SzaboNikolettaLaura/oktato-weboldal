@@ -1,4 +1,4 @@
-import { defineEventHandler, getQuery, sendError } from 'h3';
+import { defineEventHandler, getQuery, sendError, readBody } from 'h3';
 
 export default defineEventHandler(async (event) => {
     try {
@@ -21,7 +21,7 @@ export default defineEventHandler(async (event) => {
         return {
             message: 'Success'
         }
-    } catch (error: any) {
+    } catch (error) {
         console.log(error);
         return sendError(event, new Error(error.message));
     }

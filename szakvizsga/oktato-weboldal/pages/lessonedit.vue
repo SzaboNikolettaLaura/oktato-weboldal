@@ -631,7 +631,11 @@ const handleFileUpload = (event) => {
   const reader = new FileReader();
   reader.onload = (e) => {
     const content = e.target.result;
-    const lectures = parseMarkdownContent(content);
+    const { lectures, courseTitle } = parseMarkdownContent(content);
+    
+    if (courseTitle) {
+      newCourseName.value = courseTitle;
+    }
     
     if (lectures.length > 0) {
       lectures.forEach(lecture => {
@@ -672,18 +676,34 @@ const parseMarkdownContent = (content) => {
   let tableContent = [];
 
   const lines = content.split('\n');
-  
+  let courseTitle = '';
+  let firstLineProcessed = false;
+
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i];
-    
-    if (line.startsWith('# ')) {
+    if (!firstLineProcessed && line.trim() !== '') {
+      if (line.trim().startsWith('#')) {
+        courseTitle = line.trim().replace(/^#+\s*/, '');
+      } else {
+        courseTitle = line.trim();
+      }
+      firstLineProcessed = true;
+      continue;
+    }
+    // New lesson title if line starts with '##'
+    if (line.trim().startsWith('##')) {
+      // Save current lecture if it has blocks
       if (currentLecture.blocks.length > 0) {
         lectures.push(currentLecture);
       }
       currentLecture = {
-        title: line.slice(2).trim(),
+        title: line.trim().replace(/^##+\s*/, ''),
         blocks: []
       };
+      currentBlock = null;
+      currentContent = [];
+      inTable = false;
+      tableContent = [];
       continue;
     }
     
@@ -698,7 +718,8 @@ const parseMarkdownContent = (content) => {
       inTable = false;
       currentBlock = {
         type: 'text',
-        content: tableContent.join('\n')
+        content: tableContent.join('\n'),
+        editorType: 'plain'
       };
       currentLecture.blocks.push(currentBlock);
       currentBlock = null;
@@ -710,7 +731,8 @@ const parseMarkdownContent = (content) => {
           type: currentBlock.type,
           content: currentContent.join('\n').trim(),
           description: currentBlock.description || '',
-          id: Date.now() + Math.random()
+          id: Date.now() + Math.random(),
+          ...(currentBlock.type === 'text' ? { editorType: 'plain' } : {})
         });
         currentContent = [];
       }
@@ -725,7 +747,8 @@ const parseMarkdownContent = (content) => {
           type: currentBlock.type,
           content: currentContent.join('\n').trim(),
           description: currentBlock.description || '',
-          id: Date.now() + Math.random()
+          id: Date.now() + Math.random(),
+          ...(currentBlock.type === 'text' ? { editorType: 'plain' } : {})
         });
         currentContent = [];
       }
@@ -739,7 +762,8 @@ const parseMarkdownContent = (content) => {
           type: currentBlock.type,
           content: currentContent.join('\n').trim(),
           description: currentBlock.description || '',
-          id: Date.now() + Math.random()
+          id: Date.now() + Math.random(),
+          ...(currentBlock.type === 'text' ? { editorType: 'plain' } : {})
         });
         currentContent = [];
         currentBlock = null;
@@ -747,7 +771,8 @@ const parseMarkdownContent = (content) => {
     } else {
       if (!currentBlock) {
         currentBlock = {
-          type: 'text'
+          type: 'text',
+          editorType: 'plain'
         };
       }
       currentContent.push(line);
@@ -759,7 +784,8 @@ const parseMarkdownContent = (content) => {
       type: currentBlock.type,
       content: currentContent.join('\n').trim(),
       description: currentBlock.description || '',
-      id: Date.now() + Math.random()
+      id: Date.now() + Math.random(),
+      ...(currentBlock.type === 'text' ? { editorType: 'plain' } : {})
     });
   }
 
@@ -767,7 +793,12 @@ const parseMarkdownContent = (content) => {
     lectures.push(currentLecture);
   }
 
-  return lectures;
+  // Set the course title as the first lecture's title if available
+  if (lectures.length > 0 && courseTitle) {
+    lectures[0].title = courseTitle;
+  }
+
+  return { lectures, courseTitle };
 };
 
 const loadLessons = async () => {

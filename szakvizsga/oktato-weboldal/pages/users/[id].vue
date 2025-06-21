@@ -5,6 +5,7 @@
       <div class="sidebar">
         <div class="sidebar-content">
           <img :src="user.image" alt="Profile Picture" class="profile-image" />
+          <input v-if="editing" type="file" accept="image/*" @change="onImageChange" class="image-upload" />
           <button v-if="!editing" class="edit-btn" @click="toggleEditing">Szerkesztés</button>
           <button v-if="editing" class="save-btn" @click="save">Mentés</button>
           <button class="delete-btn">Törlés</button>
@@ -98,6 +99,24 @@ const save = () => {
   console.error("Update failed:", error);
 });
 }
+
+const onImageChange = async (event) => {
+  const file = event.target.files[0];
+  if (!file) return;
+  const formData = new FormData();
+  formData.append('image', file);
+  try {
+    const response = await axios.patch('/api/profile-picture', formData, {
+      params: { token: userData.value.token },
+      headers: { 'Content-Type': 'multipart/form-data' }
+    });
+    if (response.data && response.data.image) {
+      user.image = response.data.image;
+    }
+  } catch (error) {
+    console.error('Image upload failed:', error);
+  }
+};
 </script>
 
 <style scoped>
@@ -194,6 +213,10 @@ input, select {
 .form-row {
   display: flex;
   gap: 20px;
+}
+
+.image-upload {
+  margin-top: 10px;
 }
 
 @media (max-width: 768px) {

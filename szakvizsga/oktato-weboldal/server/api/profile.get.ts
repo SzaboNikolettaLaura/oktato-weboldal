@@ -9,7 +9,7 @@ export default defineEventHandler(async (event) => {
             throw new Error("Missing id parameter");
         }
 
-        const [rows, __] = await event.context.$mysql.query('SELECT id, role, first_name, last_name, email FROM users where ID = ?', [id]);
+        const [rows, __] = await event.context.$mysql.query('SELECT id, role, first_name, last_name, email, image FROM users where ID = ?', [id]);
         if(rows.length === 0) {
             throw new Error("No user found with id");
         }

@@ -306,16 +306,13 @@ const submitNotification = async () => {
     
     const notificationData = {
       ...newNotification.value,
-      lectureId: newNotification.value.lectureId || null
+      lectureId: newNotification.value.lectureId || null,
+      token: userData.value.token
     };
     
     console.log('Submitting notification:', notificationData);
     
-    const response = await axios[method](url, notificationData, {
-      headers: {
-        'Authorization': `Bearer ${userData.value.token}`
-      }
-    });
+    const response = await axios[method](url, notificationData);
 
     closeForm();
     await fetchNotifications();
@@ -349,11 +346,7 @@ const deleteNotification = async (id) => {
   if (!confirm('Biztosan törölni szeretnéd ezt az értesítést?')) return;
   
   try {
-    await axios.delete(`/api/notifications/${id}`, {
-      headers: {
-        'Authorization': `Bearer ${userData.value.token}`
-      }
-    });
+    await axios.delete(`/api/notifications/${id}?token=${userData.value.token}`);
     await fetchNotifications();
   } catch (error) {
     console.error('Error deleting notification:', error);
